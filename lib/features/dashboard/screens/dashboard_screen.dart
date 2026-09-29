@@ -33,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _dashboardTab = 0;
   String _selectedSkill = 'Semua';
   String _searchQuery = '';
+  final Set<String> _appliedProjectTitles = {};
 
   bool get _isTeacherView => widget.role == UserRole.teacher;
 
@@ -346,6 +347,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         actions: [
+          if (!_isTeacherView)
+            FilledButton(
+              onPressed: _appliedProjectTitles.contains(project.title)
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      setState(() => _appliedProjectTitles.add(project.title));
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Pengajuan bergabung terkirim kepada ketua proyek.',
+                          ),
+                        ),
+                      );
+                    },
+              child: Text(
+                _appliedProjectTitles.contains(project.title)
+                    ? 'Pengajuan terkirim'
+                    : 'Ajukan bergabung',
+              ),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Tutup'),
