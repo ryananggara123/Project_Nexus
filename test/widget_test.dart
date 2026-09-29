@@ -51,6 +51,38 @@ void main() {
     expect(find.text('Inovasi Teknologi Lingkungan'), findsOneWidget);
   });
 
+  testWidgets('student can apply to a project only once', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _loginAs(tester);
+
+    final detailButton = find.widgetWithText(TextButton, 'Detail').first;
+    await tester.tap(detailButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Ajukan bergabung'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Ajukan bergabung'));
+    await tester.tap(find.text('Ajukan bergabung'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Pengajuan bergabung terkirim kepada ketua proyek.'),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(detailButton);
+    await tester.tap(detailButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Pengajuan terkirim'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed,
+      isNull,
+    );
+  });
+
   testWidgets('student can submit a draft that stays out of public feed', (
     WidgetTester tester,
   ) async {
