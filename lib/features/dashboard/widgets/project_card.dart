@@ -17,9 +17,10 @@ class ProjectCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: Colors.white,
-      elevation: 0,
+      elevation: 1,
+      shadowColor: const Color(0xFF172A2D).withValues(alpha: 0.04),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: Color(0xFFE4EAE9)),
       ),
       child: Padding(
@@ -30,7 +31,7 @@ class ProjectCard extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  radius: 17,
+                  radius: 19,
                   backgroundColor: const Color(0xFFD6ECEB),
                   child: Text(
                     project.leader.substring(0, 1),
@@ -67,7 +68,7 @@ class ProjectCard extends StatelessWidget {
                 const _OpenBadge(),
               ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 17),
             Text(
               project.title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -130,7 +131,7 @@ class SkillTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F4F3),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,

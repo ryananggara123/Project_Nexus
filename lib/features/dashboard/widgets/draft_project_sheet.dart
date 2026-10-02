@@ -29,8 +29,8 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         decoration: const BoxDecoration(
-          color: Color(0xFFF8FAF9),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          color: Color(0xFFF6F9F8),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
           top: false,
@@ -51,18 +51,55 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Ajukan draf proyek',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: const Color(0xFF172A2D),
-                      fontWeight: FontWeight.w800,
-                    ),
+                  const SizedBox(height: 21),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5F3F1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(
+                          Icons.rocket_launch_outlined,
+                          color: Color(0xFF087E8B),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Ajukan draf proyek',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: const Color(0xFF172A2D),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 5),
+                            const Text(
+                              'Ceritakan idemu dan pilih guru pendamping.',
+                              style: TextStyle(
+                                color: Color(0xFF627174),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Draf perlu ditinjau guru sebelum tampil di feed.',
-                    style: TextStyle(color: Color(0xFF627174)),
+                  const SizedBox(height: 7),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 58),
+                    child: Text(
+                      'Draf ditinjau guru sebelum tampil di feed.',
+                      style: TextStyle(color: Color(0xFF627174), fontSize: 12),
+                    ),
                   ),
                   const SizedBox(height: 18),
                   TextFormField(
@@ -70,7 +107,6 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                     controller: _titleController,
                     decoration: const InputDecoration(
                       labelText: 'Judul proyek atau lomba',
-                      border: OutlineInputBorder(),
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Judul proyek wajib diisi.'
@@ -85,7 +121,6 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                     decoration: const InputDecoration(
                       labelText: 'Deskripsi dan target',
                       alignLabelWithHint: true,
-                      border: OutlineInputBorder(),
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Deskripsi proyek wajib diisi.'
@@ -97,7 +132,6 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                     initialValue: _selectedTeacher,
                     decoration: const InputDecoration(
                       labelText: 'Guru pendamping',
-                      border: OutlineInputBorder(),
                     ),
                     items: const [
                       DropdownMenuItem(
@@ -137,8 +171,11 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                       icon: const Icon(Icons.send_rounded),
                       label: const Text('Kirim untuk ditinjau'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF172A2D),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: const Color(0xFF123C40),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),

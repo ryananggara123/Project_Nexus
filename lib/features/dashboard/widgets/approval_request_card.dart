@@ -19,9 +19,10 @@ class ApprovalRequestCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: Colors.white,
-      elevation: 0,
+      elevation: 1,
+      shadowColor: const Color(0xFF172A2D).withValues(alpha: 0.04),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: Color(0xFFE4EAE9)),
       ),
       child: Padding(
@@ -45,12 +46,23 @@ class ApprovalRequestCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Text(
-                  'MENUNGGU ACC',
-                  style: TextStyle(
-                    color: Color(0xFF9A572C),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF2E5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'MENUNGGU ACC',
+                    style: TextStyle(
+                      color: Color(0xFF9A572C),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
               ],

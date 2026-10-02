@@ -13,10 +13,10 @@ class DashboardTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: const Color(0xFFE8EFEE),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -55,18 +55,29 @@ class _TabItem extends StatelessWidget {
         selected: selected,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 42),
+            constraints: const BoxConstraints(minHeight: 46),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: selected ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF172A2D).withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: Text(
               label,
               style: TextStyle(
-                color: selected ? const Color(0xFF172A2D) : Colors.black54,
+                color: selected
+                    ? const Color(0xFF172A2D)
+                    : const Color(0xFF718083),
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),

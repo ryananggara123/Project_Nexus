@@ -12,9 +12,10 @@ class AchievementCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 11),
       color: Colors.white,
-      elevation: 0,
+      elevation: 1,
+      shadowColor: const Color(0xFF172A2D).withValues(alpha: 0.04),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(19),
         side: const BorderSide(color: Color(0xFFE4EAE9)),
       ),
       child: Padding(
@@ -41,6 +42,7 @@ class AchievementCard extends StatelessWidget {
                     style: const TextStyle(
                       color: Color(0xFF172A2D),
                       fontWeight: FontWeight.w800,
+                      height: 1.25,
                     ),
                   ),
                   const SizedBox(height: 4),

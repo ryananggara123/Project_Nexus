@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
+
 class DashboardHeader extends StatelessWidget {
   const DashboardHeader({
     required this.isTeacherView,
@@ -18,8 +20,12 @@ class DashboardHeader extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: const Color(0xFF087E8B),
-            borderRadius: BorderRadius.circular(13),
+            gradient: const LinearGradient(
+              colors: [ProjectNexusColors.teal, ProjectNexusColors.tealDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: const Icon(Icons.hub_rounded, color: Colors.white, size: 23),
         ),
@@ -35,9 +41,9 @@ class DashboardHeader extends StatelessWidget {
               ),
             ),
             Text(
-              'RUANG KOLABORASI SISWA',
+              isTeacherView ? 'PANEL GURU PENDAMPING' : 'RUANG KOLABORASI SISWA',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: const Color(0xFF718083),
+                color: ProjectNexusColors.muted,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
               ),
@@ -51,7 +57,8 @@ class DashboardHeader extends StatelessWidget {
           icon: const Icon(Icons.logout_rounded),
           style: IconButton.styleFrom(
             backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF172A2D),
+            foregroundColor: ProjectNexusColors.ink,
+            side: const BorderSide(color: ProjectNexusColors.border),
           ),
         ),
       ],
