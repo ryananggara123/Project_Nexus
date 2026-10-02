@@ -51,6 +51,147 @@ void main() {
     expect(find.text('Inovasi Teknologi Lingkungan'), findsOneWidget);
   });
 
+  testWidgets('student workspace shows sample tasks and can add one', (
+    WidgetTester tester,
+  ) async {
+    await _loginAs(tester);
+
+    await tester.tap(find.text('Workspace'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsOneWidget);
+    expect(find.text('Papan tugas'), findsOneWidget);
+    expect(find.text('Menyusun rancangan sensor IoT'), findsOneWidget);
+    expect(find.text('To-Do'), findsOneWidget);
+    expect(find.text('In Progress'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('workspace_column_todo')),
+        matching: find.text('Menghubungkan data sensor ke aplikasi'),
+      ),
+      findsOneWidget,
+    );
+
+    final taskMenu = find.byTooltip('Ubah status tugas').first;
+    await tester.ensureVisible(taskMenu);
+    await tester.tap(taskMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pindahkan ke In Progress'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('workspace_column_inProgress')),
+        matching: find.text('Menghubungkan data sensor ke aplikasi'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(find.text('Tambah tugas').last);
+    await tester.tap(find.text('Tambah tugas').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('workspace_task_title')),
+      'Menguji prototipe sensor',
+    );
+    await tester.tap(find.text('Simpan tugas'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Menguji prototipe sensor'), findsOneWidget);
+  });
+
+  testWidgets('teacher workspace shows the same team board', (
+    WidgetTester tester,
+  ) async {
+    await _loginAs(tester, role: 'Guru');
+
+    await tester.tap(find.text('Workspace'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('PANEL PEMBIMBING'), findsOneWidget);
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsOneWidget);
+    expect(find.text('Menyusun rancangan sensor IoT'), findsOneWidget);
+  });
+
+  testWidgets('student can view and add a portfolio item', (
+    WidgetTester tester,
+  ) async {
+    await _loginAs(tester);
+
+    await tester.tap(find.text('Portofolio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Karya saya'), findsOneWidget);
+    expect(find.text('Aplikasi Jadwal Kelas'), findsOneWidget);
+    expect(find.text('Inovasi Teknologi Lingkungan'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('portfolio_add_item')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('portfolio_item_title')),
+      'Proyek Robotik',
+    );
+    await tester.enterText(
+      find.byKey(const Key('portfolio_item_category')),
+      'Robotika',
+    );
+    await tester.enterText(
+      find.byKey(const Key('portfolio_item_description')),
+      'Membuat prototipe robot penyiram tanaman otomatis.',
+    );
+    await tester.tap(find.text('Simpan karya'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Proyek Robotik'), findsOneWidget);
+  });
+
+  testWidgets('teacher portfolio shows student work gallery', (
+    WidgetTester tester,
+  ) async {
+    await _loginAs(tester, role: 'Guru');
+
+    await tester.tap(find.text('Portofolio'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Karya siswa'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Nadia Putri'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Nadia Putri'), findsOneWidget);
+    expect(find.text('Inovasi Teknologi Lingkungan'), findsOneWidget);
+    expect(find.byKey(const Key('portfolio_add_item')), findsNothing);
+  });
+
+  testWidgets('student can edit profile details', (WidgetTester tester) async {
+    await _loginAs(tester);
+
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ryan Anggara Deki'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('profile_edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('profile_name')), 'Ryan Deki');
+    await tester.tap(find.text('Simpan profil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ryan Deki'), findsOneWidget);
+  });
+
+  testWidgets('teacher profile shows mentor information', (
+    WidgetTester tester,
+  ) async {
+    await _loginAs(tester, role: 'Guru');
+
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Budi Santoso'), findsOneWidget);
+    expect(find.text('Guru Pendamping · Teknologi Informasi'), findsOneWidget);
+    expect(find.text('Mentoring'), findsOneWidget);
+  });
+
   testWidgets('student can apply to a project only once', (
     WidgetTester tester,
   ) async {

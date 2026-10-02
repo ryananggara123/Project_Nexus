@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../data/dashboard_sample_data.dart';
 import '../models/dashboard_models.dart';
+import '../models/portfolio_item.dart';
+import '../models/profile_data.dart';
+import '../models/workspace_task.dart';
 import '../widgets/achievement_card.dart';
 import '../widgets/approval_request_card.dart';
 import '../widgets/dashboard_header.dart';
@@ -10,6 +14,9 @@ import '../widgets/dashboard_tab_bar.dart';
 import '../widgets/draft_project_sheet.dart';
 import '../widgets/project_card.dart';
 import '../widgets/skill_filter_list.dart';
+import 'portfolio_screen.dart';
+import 'profile_screen.dart';
+import 'workspace_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -26,7 +33,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const _ink = Color(0xFF172A2D);
+  static const _ink = ProjectNexusColors.ink;
 
   late final List<ProjectListing> _projects = [...dashboardProjects];
   int _navigationIndex = 0;
@@ -34,6 +41,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _selectedSkill = 'Semua';
   String _searchQuery = '';
   final Set<String> _appliedProjectTitles = {};
+  final List<WorkspaceTask> _workspaceTasks = [
+    const WorkspaceTask(
+      title: 'Riset parameter kualitas air',
+      assignee: 'Rizky Ramadhan',
+      dueLabel: 'Hari ini',
+      status: WorkspaceTaskStatus.done,
+    ),
+    const WorkspaceTask(
+      title: 'Menyusun rancangan sensor IoT',
+      assignee: 'Nadia Putri',
+      dueLabel: 'Besok',
+      status: WorkspaceTaskStatus.inProgress,
+    ),
+    const WorkspaceTask(
+      title: 'Membuat tampilan dashboard aplikasi',
+      assignee: 'Ryan Anggara Deki',
+      dueLabel: '12 Okt 2026',
+      status: WorkspaceTaskStatus.inProgress,
+    ),
+    const WorkspaceTask(
+      title: 'Menghubungkan data sensor ke aplikasi',
+      assignee: 'Ryan Anggara Deki',
+      dueLabel: '15 Okt 2026',
+      status: WorkspaceTaskStatus.todo,
+    ),
+    const WorkspaceTask(
+      title: 'Menyiapkan bahan presentasi proyek',
+      assignee: 'Nadia Putri',
+      dueLabel: '18 Okt 2026',
+      status: WorkspaceTaskStatus.todo,
+    ),
+  ];
+  final List<PortfolioItem> _portfolioItems = [
+    const PortfolioItem(
+      owner: 'Ryan Anggara Deki',
+      title: 'Aplikasi Jadwal Kelas',
+      category: 'Mobile Development',
+      description:
+          'Aplikasi Flutter untuk membantu siswa melihat jadwal dan pengingat kelas.',
+      year: '2026',
+      icon: Icons.phone_android_rounded,
+      color: Color(0xFF087E8B),
+    ),
+    const PortfolioItem(
+      owner: 'Ryan Anggara Deki',
+      title: 'Desain Ulang Perpustakaan Digital',
+      category: 'UI/UX',
+      description:
+          'Membuat prototipe antarmuka peminjaman buku yang mudah digunakan.',
+      year: '2025',
+      icon: Icons.design_services_outlined,
+      color: Color(0xFFC46A3A),
+    ),
+    const PortfolioItem(
+      owner: 'Nadia Putri',
+      title: 'Inovasi Teknologi Lingkungan',
+      category: 'Prestasi · Tingkat Provinsi',
+      description:
+          'Merancang sistem pemantauan lingkungan untuk kompetisi sains pelajar.',
+      year: '2025',
+      icon: Icons.emoji_events_outlined,
+      color: Color(0xFF536B45),
+    ),
+    const PortfolioItem(
+      owner: 'Rizky Ramadhan',
+      title: 'Peta Cerita Sejarah Lokal',
+      category: 'Riset & Data',
+      description:
+          'Mengumpulkan cerita sejarah lokal dan menyajikannya dalam peta interaktif.',
+      year: '2025',
+      icon: Icons.map_outlined,
+      color: Color(0xFF6657A5),
+    ),
+  ];
+  late ProfileData _profile = _isTeacherView
+      ? const ProfileData(
+          name: 'Budi Santoso',
+          roleLabel: 'Guru Pendamping · Teknologi Informasi',
+          institution: 'ProjectNexus · SMA Nusantara',
+          email: 'budi.santoso@school.id',
+          bio:
+              'Mendampingi siswa mengembangkan ide teknologi menjadi proyek yang berdampak dan siap berkompetisi.',
+          skills: ['Mentoring', 'IoT', 'Riset', 'Pengembangan Proyek'],
+        )
+      : const ProfileData(
+          name: 'Ryan Anggara Deki',
+          roleLabel: 'Siswa · Kelas XI',
+          institution: 'SMA Nusantara · Bandar Lampung',
+          email: 'ryan@school.id',
+          bio:
+              'Siswa yang tertarik pada pengembangan aplikasi mobile, desain produk digital, dan kolaborasi lintas keahlian.',
+          skills: ['Flutter', 'UI/UX', 'Prototyping', 'Kolaborasi'],
+        );
 
   bool get _isTeacherView => widget.role == UserRole.teacher;
 
@@ -56,7 +156,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? _isTeacherView
                   ? _buildTeacherQueue()
                   : _buildDashboard()
-            : _buildPlaceholder(),
+            : _navigationIndex == 1
+            ? _buildWorkspace()
+            : _navigationIndex == 2
+            ? _buildPortfolio()
+            : _buildProfile(),
       ),
       floatingActionButton: !_isTeacherView && _navigationIndex == 0
           ? FloatingActionButton.extended(
@@ -98,30 +202,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildWorkspace() {
+    return WorkspaceScreen(
+      tasks: _workspaceTasks,
+      isTeacherView: _isTeacherView,
+      onAddTask: (task) => setState(() => _workspaceTasks.add(task)),
+      onTaskStatusChanged: _updateWorkspaceTaskStatus,
+    );
+  }
+
+  Widget _buildPortfolio() {
+    return PortfolioScreen(
+      role: widget.role,
+      items: _portfolioItems,
+      onAddItem: (item) => setState(() => _portfolioItems.insert(0, item)),
+    );
+  }
+
+  Widget _buildProfile() {
+    return ProfileScreen(
+      profile: _profile,
+      onProfileChanged: (profile) => setState(() => _profile = profile),
+    );
+  }
+
+  void _updateWorkspaceTaskStatus(
+    WorkspaceTask task,
+    WorkspaceTaskStatus status,
+  ) {
+    setState(() {
+      final index = _workspaceTasks.indexOf(task);
+      if (index != -1) {
+        _workspaceTasks[index] = task.copyWith(status: status);
+      }
+    });
+  }
+
   Widget _buildDashboard() {
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-          sliver: SliverList.list(
-            children: [
-              DashboardHeader(isTeacherView: false, onLogout: _logout),
-              const SizedBox(height: 28),
-              Text(
-                'Temukan tim yang tepat.',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: _ink,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                'Ide hebat tumbuh bersama keahlian yang beragam.',
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(color: const Color(0xFF627174)),
-              ),
-              const SizedBox(height: 22),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+              sliver: SliverList.list(
+                children: [
+                  DashboardHeader(isTeacherView: false, onLogout: _logout),
+                  const SizedBox(height: 22),
+                  _buildStudentWelcome(),
+                  const SizedBox(height: 22),
               DashboardTabBar(
                 selectedIndex: _dashboardTab,
                 onChanged: (index) => setState(() => _dashboardTab = index),
@@ -129,10 +259,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 18),
               if (_dashboardTab == 0) ..._buildProjectFeed(),
               if (_dashboardTab == 1) ..._buildAchievementCatalog(),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -145,25 +277,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         )
         .toList();
 
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          sliver: SliverList.list(
-            children: [
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              sliver: SliverList.list(
+                children: [
               DashboardHeader(isTeacherView: true, onLogout: _logout),
-              const SizedBox(height: 28),
-              Text(
-                'Antrean persetujuan',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(color: _ink, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${pendingProjects.length} draf menunggu tinjauan',
-                style: const TextStyle(color: Color(0xFF627174)),
-              ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
+              _buildTeacherWelcome(pendingProjects.length),
+              const SizedBox(height: 20),
               if (pendingProjects.isEmpty)
                 const _EmptyApprovalState()
               else
@@ -174,10 +300,122 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onReject: () => _updateProjectStatus(project, 'rejected'),
                   ),
                 ),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildStudentWelcome() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(21),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [ProjectNexusColors.tealDark, Color(0xFF176B68)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: ProjectNexusColors.tealDark.withValues(alpha: 0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'RUANG KOLABORASI SISWA',
+                    style: TextStyle(
+                      color: Color(0xFFC9E9E2),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Temukan tim yang tepat.',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.12,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Ide hebat tumbuh bersama keahlian yang beragam.',
+                  style: TextStyle(
+                    color: Color(0xFFD7E9E5),
+                    height: 1.45,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.groups_2_rounded,
+            color: Color(0xFFB9E2D8),
+            size: 55,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeacherWelcome(int pendingCount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(21),
+      decoration: BoxDecoration(
+        color: ProjectNexusColors.tealDark,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.fact_check_outlined,
+            color: Color(0xFFB9E2D8),
+            size: 28,
+          ),
+          const SizedBox(height: 13),
+          Text(
+            'Antrean persetujuan',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            '$pendingCount draf menunggu tinjauan',
+            style: const TextStyle(color: Color(0xFFD7E9E5), height: 1.4),
+          ),
+        ],
+      ),
     );
   }
 
@@ -188,13 +426,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: InputDecoration(
           hintText: 'Cari proyek, lomba, atau keahlian',
           prefixIcon: const Icon(Icons.search_rounded),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
         ),
       ),
       const SizedBox(height: 14),
@@ -236,8 +467,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFF173D3D),
-          borderRadius: BorderRadius.circular(18),
+          color: ProjectNexusColors.tealDark,
+          borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
           children: [
@@ -271,51 +502,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const SizedBox(height: 14),
       ...schoolAchievements.map(AchievementCard.new),
     ];
-  }
-
-  Widget _buildPlaceholder() {
-    const sections = [
-      (
-        'Workspace tim',
-        'Papan tugas tim yang sudah terbentuk akan tersedia di sini.',
-        Icons.view_kanban_outlined,
-      ),
-      (
-        'Portofolio',
-        'Karya dan sertifikatmu akan tersusun di sini.',
-        Icons.collections_bookmark_outlined,
-      ),
-      (
-        'Profil',
-        'Informasi akun dan keahlianmu akan tersedia di sini.',
-        Icons.person_outline_rounded,
-      ),
-    ];
-    final section = sections[_navigationIndex - 1];
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(section.$3, size: 48, color: const Color(0xFF087E8B)),
-            const SizedBox(height: 14),
-            Text(
-              section.$1,
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(color: _ink, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              section.$2,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF627174), height: 1.5),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _showProjectDetails(ProjectListing project) async {
