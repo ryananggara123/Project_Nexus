@@ -28,16 +28,17 @@ class SkillFilterList extends StatelessWidget {
               onSelected: (_) => onSelected(skill),
               backgroundColor: Colors.white,
               selectedColor: const Color(0xFFD6ECEB),
+              shape: const StadiumBorder(),
+              side: BorderSide(
+                color: selected
+                    ? const Color(0xFF087E8B)
+                    : const Color(0xFFDCE4E3),
+              ),
               labelStyle: TextStyle(
                 color: selected
                     ? const Color(0xFF087E8B)
                     : const Color(0xFF172A2D),
                 fontWeight: FontWeight.w700,
-              ),
-              side: BorderSide(
-                color: selected
-                    ? const Color(0xFF087E8B)
-                    : const Color(0xFFDCE4E3),
               ),
             ),
           );
