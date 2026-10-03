@@ -7,12 +7,14 @@ import '../models/portfolio_item.dart';
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({
     required this.role,
+    required this.studentName,
     required this.items,
     required this.onAddItem,
     super.key,
   });
 
   final UserRole role;
+  final String studentName;
   final List<PortfolioItem> items;
   final ValueChanged<PortfolioItem> onAddItem;
 
@@ -22,7 +24,7 @@ class PortfolioScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final visibleItems = _isTeacher
         ? items
-        : items.where((item) => item.owner == 'Ryan Anggara Deki').toList();
+        : items.where((item) => item.owner == studentName).toList();
 
     return Center(
       child: ConstrainedBox(
@@ -70,12 +72,7 @@ class PortfolioScreen extends StatelessWidget {
                   if (visibleItems.isEmpty)
                     const _EmptyPortfolio()
                   else
-                    ...visibleItems.map(
-                      (item) => _PortfolioCard(
-                        item: item,
-                        showOwner: _isTeacher,
-                      ),
-                    ),
+                    _buildPortfolioCollection(visibleItems),
                   const SizedBox(height: 8),
                   _buildPortfolioNote(),
                 ],
@@ -84,6 +81,39 @@ class PortfolioScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPortfolioCollection(List<PortfolioItem> visibleItems) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 680 ? 2 : 1;
+        if (columns == 1) {
+          return Column(
+            children: visibleItems
+                .map(
+                  (item) => _PortfolioCard(
+                    item: item,
+                    showOwner: _isTeacher,
+                  ),
+                )
+                .toList(),
+          );
+        }
+        final cardWidth = (constraints.maxWidth - 14) / 2;
+        return Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          children: visibleItems
+              .map(
+                (item) => SizedBox(
+                  width: cardWidth,
+                  child: _PortfolioCard(item: item, showOwner: _isTeacher),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -184,7 +214,9 @@ class PortfolioScreen extends StatelessWidget {
   Future<void> _showAddItemDialog(BuildContext context) async {
     final item = await showDialog<PortfolioItem>(
       context: context,
-      builder: (context) => const _AddPortfolioItemDialog(),
+      builder: (context) => _AddPortfolioItemDialog(
+        studentName: studentName,
+      ),
     );
     if (item != null) onAddItem(item);
   }
@@ -201,25 +233,31 @@ class _PortfolioCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: Colors.white,
-      elevation: 1,
-      shadowColor: ProjectNexusColors.ink.withValues(alpha: 0.04),
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(19),
+        borderRadius: BorderRadius.circular(22),
         side: const BorderSide(color: ProjectNexusColors.border),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 49,
-              height: 49,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
-                color: item.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  colors: [
+                    item.color.withValues(alpha: 0.18),
+                    item.color.withValues(alpha: 0.07),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(item.icon, color: item.color),
+              child: Icon(item.icon, color: item.color, size: 25),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -239,7 +277,7 @@ class _PortfolioCard extends StatelessWidget {
                   ],
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: ProjectNexusColors.ink,
                       fontWeight: FontWeight.w800,
                       height: 1.3,
@@ -324,7 +362,9 @@ class _EmptyPortfolio extends StatelessWidget {
 }
 
 class _AddPortfolioItemDialog extends StatefulWidget {
-  const _AddPortfolioItemDialog();
+  const _AddPortfolioItemDialog({required this.studentName});
+
+  final String studentName;
 
   @override
   State<_AddPortfolioItemDialog> createState() =>
@@ -396,7 +436,7 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
             Navigator.pop(
               context,
               PortfolioItem(
-                owner: 'Ryan Anggara Deki',
+                owner: widget.studentName,
                 title: _titleController.text.trim(),
                 category: _categoryController.text.trim(),
                 description: _descriptionController.text.trim(),

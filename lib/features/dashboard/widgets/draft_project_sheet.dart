@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
 
 class DraftProjectSheet extends StatefulWidget {
-  const DraftProjectSheet({super.key});
+  const DraftProjectSheet({
+    required this.studentName,
+    this.projectToRevise,
+    super.key,
+  });
+
+  final String studentName;
+  final ProjectListing? projectToRevise;
 
   @override
   State<DraftProjectSheet> createState() => _DraftProjectSheetState();
@@ -13,7 +21,16 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String? _selectedTeacher;
+  late String? _selectedTeacher;
+
+  @override
+  void initState() {
+    super.initState();
+    final project = widget.projectToRevise;
+    _titleController.text = project?.title ?? '';
+    _descriptionController.text = project?.description ?? '';
+    _selectedTeacher = project?.teacherName;
+  }
 
   @override
   void dispose() {
@@ -24,89 +41,112 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final projectToRevise = widget.projectToRevise;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: const BoxDecoration(
-          color: Color(0xFFF6F9F8),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: ProjectNexusColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Center(
                     child: Container(
-                      width: 38,
-                      height: 4,
+                      width: 42,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC7D1D0),
+                        color: const Color(0xFFD8E1DF),
                         borderRadius: BorderRadius.circular(9),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 21),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5F3F1),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Icon(
-                          Icons.rocket_launch_outlined,
-                          color: Color(0xFF087E8B),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Ajukan draf proyek',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: const Color(0xFF172A2D),
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                            const SizedBox(height: 5),
-                            const Text(
-                              'Ceritakan idemu dan pilih guru pendamping.',
-                              style: TextStyle(
-                                color: Color(0xFF627174),
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 24),
+                  Text(
+                    projectToRevise == null
+                        ? 'PENGAJUAN PROYEK'
+                        : 'REVISI PENGAJUAN',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: ProjectNexusColors.teal,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    projectToRevise == null
+                        ? 'Ceritakan ide proyekmu'
+                        : 'Sempurnakan idemu',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: ProjectNexusColors.ink,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                   const SizedBox(height: 7),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 58),
-                    child: Text(
-                      'Draf ditinjau guru sebelum tampil di feed.',
-                      style: TextStyle(color: Color(0xFF627174), fontSize: 12),
+                  Text(
+                    projectToRevise == null
+                        ? 'Lengkapi informasi berikut agar guru dapat meninjau rencanamu.'
+                        : 'Perbarui detail proyek berdasarkan masukan guru, lalu kirim kembali untuk ditinjau.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: ProjectNexusColors.muted,
+                      height: 1.45,
                     ),
                   ),
                   const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F7F6),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: ProjectNexusColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: ProjectNexusColors.teal,
+                          size: 19,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            projectToRevise == null
+                                ? 'Pengajuan akan ditampilkan di feed setelah disetujui guru pendamping.'
+                                : 'Revisi dikirim kepada ${projectToRevise.teacherName}. Guru pendamping tidak dapat diubah.',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: ProjectNexusColors.ink,
+                                  height: 1.45,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 22),
                   TextFormField(
                     key: const Key('draft_project_title'),
                     controller: _titleController,
                     decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.title_rounded),
                       labelText: 'Judul proyek atau lomba',
+                      hintText: 'Contoh: Sistem Kebun Hidroponik Pintar',
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Judul proyek wajib diisi.'
@@ -119,7 +159,12 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                     minLines: 3,
                     maxLines: 4,
                     decoration: const InputDecoration(
+                      prefixIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 48),
+                        child: Icon(Icons.notes_rounded),
+                      ),
                       labelText: 'Deskripsi dan target',
+                      hintText: 'Jelaskan masalah, ide solusi, dan target proyek.',
                       alignLabelWithHint: true,
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
@@ -130,21 +175,35 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                   DropdownButtonFormField<String>(
                     key: const Key('draft_project_teacher'),
                     initialValue: _selectedTeacher,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Guru pendamping',
+                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      helperText: projectToRevise == null
+                          ? 'Pilih guru yang akan meninjau pengajuan.'
+                          : 'Tetap ditinjau oleh guru yang sama.',
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Budi Santoso',
-                        child: Text('Budi Santoso'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Siti Rahmawati',
-                        child: Text('Siti Rahmawati'),
-                      ),
+                    items: [
+                      if (projectToRevise == null &&
+                          _selectedTeacher != 'Budi Santoso')
+                        const DropdownMenuItem(
+                          value: 'Budi Santoso',
+                          child: Text('Budi Santoso'),
+                        ),
+                      if (projectToRevise == null &&
+                          _selectedTeacher != 'Siti Rahmawati')
+                        const DropdownMenuItem(
+                          value: 'Siti Rahmawati',
+                          child: Text('Siti Rahmawati'),
+                        ),
+                      if (_selectedTeacher != null)
+                        DropdownMenuItem(
+                          value: _selectedTeacher,
+                          child: Text(_selectedTeacher!),
+                        ),
                     ],
-                    onChanged: (value) =>
-                        setState(() => _selectedTeacher = value),
+                    onChanged: projectToRevise == null
+                        ? (value) => setState(() => _selectedTeacher = value)
+                        : null,
                     validator: (value) =>
                         value == null ? 'Pilih guru pendamping.' : null,
                   ),
@@ -152,24 +211,43 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
+                      key: const Key('draft_project_submit'),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
+                          final previous = widget.projectToRevise;
                           Navigator.pop(
                             context,
-                            ProjectListing(
-                              title: _titleController.text.trim(),
-                              leader: 'Ryan Anggara Deki',
-                              event: 'Proyek siswa',
-                              description: _descriptionController.text.trim(),
-                              skills: const [],
-                              teacherName: _selectedTeacher!,
-                              statusAcc: 'pending',
-                            ),
+                            previous == null
+                                ? ProjectListing(
+                                    title: _titleController.text.trim(),
+                                    leader: widget.studentName,
+                                    event: 'Proyek siswa',
+                                    description: _descriptionController.text
+                                        .trim(),
+                                    skills: const [],
+                                    teacherName: _selectedTeacher!,
+                                    statusAcc: 'pending',
+                                  )
+                                : previous.copyWith(
+                                    title: _titleController.text.trim(),
+                                    description: _descriptionController.text
+                                        .trim(),
+                                    statusAcc: 'pending',
+                                    clearReviewNote: true,
+                                  ),
                           );
                         }
                       },
-                      icon: const Icon(Icons.send_rounded),
-                      label: const Text('Kirim untuk ditinjau'),
+                      icon: Icon(
+                        projectToRevise == null
+                            ? Icons.send_rounded
+                            : Icons.replay_rounded,
+                      ),
+                      label: Text(
+                        widget.projectToRevise == null
+                            ? 'Kirim untuk ditinjau'
+                            : 'Kirim ulang untuk ditinjau',
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF123C40),
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -183,6 +261,8 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
               ),
             ),
           ),
+        ),
+      ),
         ),
       ),
     );
