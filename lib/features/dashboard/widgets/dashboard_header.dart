@@ -30,27 +30,35 @@ class DashboardHeader extends StatelessWidget {
           child: const Icon(Icons.hub_rounded, color: Colors.white, size: 23),
         ),
         const SizedBox(width: 11),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ProjectNexus',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: const Color(0xFF172A2D),
-                fontWeight: FontWeight.w800,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ProjectNexus',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: const Color(0xFF172A2D),
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            Text(
-              isTeacherView ? 'PANEL GURU PENDAMPING' : 'RUANG KOLABORASI SISWA',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: ProjectNexusColors.muted,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
+              Text(
+                isTeacherView
+                    ? 'PANEL GURU PENDAMPING'
+                    : 'RUANG KOLABORASI SISWA',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: ProjectNexusColors.muted,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         IconButton(
           tooltip: 'Keluar',
           onPressed: onLogout,

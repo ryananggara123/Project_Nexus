@@ -40,6 +40,48 @@ class WorkspaceScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isTeacherView ? 'PANEL PEMBIMBING' : 'RUANG KOLABORASI',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: ProjectNexusColors.teal,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Workspace',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: ProjectNexusColors.ink,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: ProjectNexusColors.border),
+                    ),
+                    child: const Icon(
+                      Icons.groups_2_outlined,
+                      color: ProjectNexusColors.teal,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               _buildHero(context, completedCount, progress),
               const SizedBox(height: 18),
               _buildProjectSummary(),
@@ -98,25 +140,40 @@ class WorkspaceScreen extends StatelessWidget {
       padding: const EdgeInsets.all(21),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [ProjectNexusColors.tealDark, Color(0xFF176B68)],
+          colors: [Color(0xFF102F35), ProjectNexusColors.tealDark, Color(0xFF176B68)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: ProjectNexusColors.tealDark.withValues(alpha: 0.14),
+            blurRadius: 20,
+            offset: const Offset(0, 9),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.view_kanban_rounded,
-                color: Color(0xFFB9E2D8),
-                size: 26,
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.view_kanban_rounded,
+                  color: Color(0xFFB9E2D8),
+                  size: 21,
+                ),
               ),
-              const SizedBox(width: 9),
+              const SizedBox(width: 11),
               Text(
-                isTeacherView ? 'PANEL PEMBIMBING' : 'RUANG KERJA TIM',
+                isTeacherView ? 'RUANG KERJA GURU' : 'RUANG KERJA TIM',
                 style: const TextStyle(
                   color: Color(0xFFC9E9E2),
                   fontSize: 10,
@@ -162,6 +219,7 @@ class WorkspaceScreen extends StatelessWidget {
                 '${(progress * 100).round()}%',
                 style: const TextStyle(
                   color: Colors.white,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -170,7 +228,11 @@ class WorkspaceScreen extends StatelessWidget {
           const SizedBox(height: 7),
           Text(
             '$completedCount dari ${tasks.length} tugas selesai',
-            style: const TextStyle(color: Color(0xFFD7E9E5), fontSize: 11),
+            style: const TextStyle(
+              color: Color(0xFFD7E9E5),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -399,8 +461,9 @@ class _TaskColumn extends StatelessWidget {
       margin: const EdgeInsets.only(right: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEDF2F1),
+        color: const Color(0xFFE9EFEE),
         borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: const Color(0xFFDDE6E4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

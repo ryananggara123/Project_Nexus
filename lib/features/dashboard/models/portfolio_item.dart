@@ -18,4 +18,16 @@ class PortfolioItem {
   final String year;
   final IconData icon;
   final Color color;
+
+  PortfolioItem copyWith({String? owner}) {
+    return PortfolioItem(
+      owner: owner ?? this.owner,
+      title: title,
+      category: category,
+      description: description,
+      year: year,
+      icon: icon,
+      color: color,
+    );
+  }
 }

@@ -21,15 +21,32 @@ class ProfileScreen extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
               sliver: SliverList.list(
                 children: [
+                  Text(
+                    'AKUN & IDENTITAS',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: ProjectNexusColors.teal,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Profil',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: ProjectNexusColors.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 17),
                   _buildHeader(context),
-                  const SizedBox(height: 17),
+                  const SizedBox(height: 14),
                   _buildAboutCard(context),
-                  const SizedBox(height: 17),
+                  const SizedBox(height: 14),
                   _buildSkillsCard(context),
-                  const SizedBox(height: 17),
+                  const SizedBox(height: 14),
                   _buildContactCard(context),
                   const SizedBox(height: 15),
                   const Text(
@@ -54,11 +71,22 @@ class ProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.all(21),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [ProjectNexusColors.tealDark, Color(0xFF176B68)],
+          colors: [
+            Color(0xFF102F35),
+            ProjectNexusColors.tealDark,
+            Color(0xFF176B68),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: ProjectNexusColors.tealDark.withValues(alpha: 0.14),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -98,14 +126,18 @@ class ProfileScreen extends StatelessWidget {
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 34,
+                  radius: 37,
                   backgroundColor: const Color(0xFFE5F3F1),
-                  child: Text(
-                    _initials(profile.name),
-                    style: const TextStyle(
-                      color: ProjectNexusColors.tealDark,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
+                  child: CircleAvatar(
+                    radius: 32,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      _initials(profile.name),
+                      style: const TextStyle(
+                        color: ProjectNexusColors.tealDark,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
@@ -116,6 +148,8 @@ class ProfileScreen extends StatelessWidget {
                     children: [
                       Text(
                         profile.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -124,6 +158,8 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         profile.roleLabel,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFFD7E9E5),
                           fontSize: 12,
@@ -262,11 +298,18 @@ class _ProfileSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(19),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(19),
+        borderRadius: BorderRadius.circular(21),
         border: Border.all(color: ProjectNexusColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: ProjectNexusColors.ink.withValues(alpha: 0.025),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
