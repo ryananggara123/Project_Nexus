@@ -26,9 +26,14 @@ class DashboardTabBar extends StatelessWidget {
             onTap: () => onChanged(0),
           ),
           _TabItem(
-            label: 'Katalog prestasi',
+            label: 'Pengajuan saya',
             selected: selectedIndex == 1,
             onTap: () => onChanged(1),
+          ),
+          _TabItem(
+            label: 'Katalog prestasi',
+            selected: selectedIndex == 2,
+            onTap: () => onChanged(2),
           ),
         ],
       ),
@@ -72,14 +77,18 @@ class _TabItem extends StatelessWidget {
                     ]
                   : null,
             ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: selected
-                    ? const Color(0xFF172A2D)
-                    : const Color(0xFF718083),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: selected
+                      ? const Color(0xFF172A2D)
+                      : const Color(0xFF718083),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
