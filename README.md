@@ -1,17 +1,24 @@
-# project_nexus
+# ProjectNexus
 
-A new Flutter project.
+ProjectNexus is a Flutter prototype for student project team formation and teacher-guided project review.
 
-## Getting Started
+## Run locally
 
-This project is a starting point for a Flutter application.
+From the project directory:
 
-A few resources to get you started if this is your first Flutter project:
+```powershell
+flutter pub get
+flutter run -d chrome
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Project and team workflow
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. A student submits a project with a description, required skills, and a selected teacher.
+2. Only that teacher can approve or reject the submission. Approved projects with open recruitment appear in the project feed.
+3. Students can apply once per project. Each application snapshots the student's profile skills and portfolio so project leaders can compare them with the requested skills and review them after switching accounts.
+4. Team size is not capped by the app. The project leader closes or reopens recruitment when appropriate.
+5. Only the project leader, accepted team members, and assigned teacher can access an approved project's workspace.
+
+## Prototype limitations
+
+Accounts and workflow data currently live in application memory and reset when the app restarts. Authentication is simulated, and there is no Firebase or file upload integration yet; this prototype must not be treated as a production system for sensitive student data.

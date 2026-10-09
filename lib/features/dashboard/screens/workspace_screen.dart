@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
+import '../models/dashboard_models.dart';
 import '../models/workspace_task.dart';
 
 class WorkspaceScreen extends StatelessWidget {
   const WorkspaceScreen({
+    required this.availableProjects,
+    required this.selectedProjectId,
+    required this.onProjectChanged,
+    required this.projectTitle,
+    required this.members,
     required this.tasks,
     required this.isTeacherView,
     required this.onAddTask,
@@ -12,18 +18,16 @@ class WorkspaceScreen extends StatelessWidget {
     super.key,
   });
 
+  final List<ProjectListing> availableProjects;
+  final String selectedProjectId;
+  final ValueChanged<String> onProjectChanged;
+  final String projectTitle;
+  final List<(String, String)> members;
   final List<WorkspaceTask> tasks;
   final bool isTeacherView;
   final ValueChanged<WorkspaceTask> onAddTask;
   final void Function(WorkspaceTask task, WorkspaceTaskStatus status)
   onTaskStatusChanged;
-
-  static const _members = [
-    ('Nadia Putri', 'Ketua proyek'),
-    ('Ryan Anggara Deki', 'Pengembang aplikasi'),
-    ('Rizky Ramadhan', 'Riset & data'),
-    ('Budi Santoso', 'Guru pendamping'),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +85,31 @@ class WorkspaceScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              if (availableProjects.length > 1) ...[
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  key: const Key('workspace_project_selector'),
+                  initialValue: selectedProjectId,
+                  decoration: const InputDecoration(
+                    labelText: 'Pilih proyek',
+                    prefixIcon: Icon(Icons.folder_open_rounded),
+                  ),
+                  items: availableProjects
+                      .map(
+                        (project) => DropdownMenuItem(
+                          value: project.id,
+                          child: Text(
+                            project.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (projectId) {
+                    if (projectId != null) onProjectChanged(projectId);
+                  },
+                ),
+              ],
               const SizedBox(height: 18),
               _buildHero(context, completedCount, progress),
               const SizedBox(height: 18),
@@ -89,7 +118,7 @@ class WorkspaceScreen extends StatelessWidget {
               _buildSectionTitle(
                 context,
                 'Anggota tim',
-                '${_members.length} orang',
+                '${members.length} orang',
               ),
               const SizedBox(height: 10),
               _buildTeamMembers(),
@@ -185,7 +214,7 @@ class WorkspaceScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Workspace tim',
+            projectTitle,
             style: Theme.of(context).textTheme.headlineSmall
                 ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
           ),
@@ -330,7 +359,7 @@ class WorkspaceScreen extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: _members.map((member) {
+        children: members.map((member) {
           final isTeacher = member.$2 == 'Guru pendamping';
           return Container(
             width: 150,

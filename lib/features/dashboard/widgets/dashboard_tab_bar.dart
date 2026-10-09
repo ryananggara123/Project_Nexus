@@ -31,9 +31,14 @@ class DashboardTabBar extends StatelessWidget {
             onTap: () => onChanged(1),
           ),
           _TabItem(
-            label: 'Katalog prestasi',
+            label: 'Lamaran saya',
             selected: selectedIndex == 2,
             onTap: () => onChanged(2),
+          ),
+          _TabItem(
+            label: 'Katalog prestasi',
+            selected: selectedIndex == 3,
+            onTap: () => onChanged(3),
           ),
         ],
       ),

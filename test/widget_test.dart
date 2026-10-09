@@ -25,6 +25,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('login_submit')), findsOneWidget);
+    expect(find.text('ProjectNexus'), findsNothing);
+  });
+
+  testWidgets('login screen adapts to wide screens', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProjectNexusApp());
+    await tester.pump(AuthGate.splashDuration);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selamat datang kembali!'), findsOneWidget);
+    expect(find.byKey(const Key('login_submit')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('login screen fits a mobile viewport', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProjectNexusApp());
+    await tester.pump(AuthGate.splashDuration);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selamat datang kembali!'), findsOneWidget);
+    expect(find.byKey(const Key('login_submit')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('login validates email and password', (
@@ -138,6 +171,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Dewi Anggraini'), findsOneWidget);
+    await tester.tap(find.text('Workspace'));
+    await tester.pumpAndSettle();
+    expect(find.text('Workspace belum tersedia'), findsOneWidget);
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
 
     await tester.tapAt(
       Offset(
@@ -223,7 +261,7 @@ void main() {
     await tester.tap(find.text('Workspace'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsOneWidget);
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNWidgets(2));
     expect(find.text('Papan tugas'), findsOneWidget);
     expect(find.text('Menyusun rancangan sensor IoT'), findsOneWidget);
     expect(find.text('To-Do'), findsOneWidget);
@@ -273,7 +311,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('PANEL PEMBIMBING'), findsOneWidget);
-    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsOneWidget);
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNWidgets(3));
     expect(find.text('Menyusun rancangan sensor IoT'), findsOneWidget);
   });
 
@@ -370,28 +408,46 @@ void main() {
       const Offset(0, -460),
     );
     await tester.pumpAndSettle();
-    final detailButton = find.widgetWithText(TextButton, 'Detail').first;
-    await tester.ensureVisible(detailButton);
-    await tester.tap(detailButton);
+    final libraryProject = find.ancestor(
+      of: find.text('Sistem Informasi Perpustakaan'),
+      matching: find.byType(Card),
+    );
+    final libraryDetailButton = find.descendant(
+      of: libraryProject,
+      matching: find.widgetWithText(TextButton, 'Detail'),
+    );
+    await tester.ensureVisible(libraryDetailButton);
+    await tester.tap(libraryDetailButton);
     await tester.pumpAndSettle();
     expect(find.text('Ajukan bergabung'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Ajukan bergabung'));
     await tester.tap(find.text('Ajukan bergabung'));
     await tester.pumpAndSettle();
     expect(
-      find.text('Pengajuan bergabung terkirim kepada ketua proyek.'),
+      find.text('Lamaran telah dikirim kepada ketua proyek.'),
       findsOneWidget,
     );
 
-    await tester.ensureVisible(detailButton);
-    await tester.tap(detailButton);
+    await tester.tap(libraryDetailButton);
     await tester.pumpAndSettle();
-    expect(find.text('Pengajuan terkirim'), findsOneWidget);
+    expect(find.text('Menunggu'), findsOneWidget);
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed,
+      tester
+          .widget<FilledButton>(find.byKey(const Key('apply_sample-library')))
+          .onPressed,
       isNull,
     );
+    await tester.tap(find.text('Tutup'));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Lamaran saya'));
+    await tester.tap(find.text('Lamaran saya'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sistem Informasi Perpustakaan'), findsOneWidget);
+    expect(find.text('Menunggu'), findsOneWidget);
   });
 
   testWidgets('student can submit a draft that stays out of public feed', (
@@ -409,6 +465,15 @@ void main() {
       find.byKey(const Key('draft_project_description')),
       'Mengembangkan sistem hidroponik otomatis untuk sekolah.',
     );
+    await tester.ensureVisible(find.text('Kirim untuk ditinjau'));
+    await tester.tap(find.text('Kirim untuk ditinjau'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Pilih minimal satu keahlian yang dibutuhkan.'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.byKey(const Key('draft_skill_Flutter')));
+    await tester.tap(find.byKey(const Key('draft_skill_Flutter')));
     await tester.ensureVisible(find.byKey(const Key('draft_project_teacher')));
     await tester.tap(find.byKey(const Key('draft_project_teacher')));
     await tester.pumpAndSettle();
@@ -504,6 +569,22 @@ void main() {
     await tester.tap(find.text('Pengajuan saya'));
     await tester.pumpAndSettle();
     expect(find.text('Disetujui'), findsOneWidget);
+    final manageApplicants = find.text('Kelola pelamar (rekrutmen terbuka)');
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -360),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(manageApplicants);
+    await tester.tap(manageApplicants);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Belum ada pelamar yang menunggu keputusan.'),
+      findsOneWidget,
+    );
+    expect(find.text('1 anggota termasuk ketua'), findsOneWidget);
+    await tester.tap(find.text('Tutup').last);
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Feed proyek'));
     await tester.pumpAndSettle();
@@ -632,6 +713,195 @@ void main() {
     expect(find.text('Disetujui'), findsOneWidget);
   });
 
+  testWidgets('accepted applicant gets access to project workspace', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _registerAndLoginAs(
+      tester,
+      name: 'Ryan Anggara Deki',
+      nim: '2413025001',
+      username: 'ryan.angg',
+      email: 'test@school.id',
+    );
+    await _submitProject(tester, 'Proyek Kolaborasi Siswa');
+
+    await _switchAccount(tester, role: 'Guru');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Proyek Kolaborasi Siswa'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final approveButton = find
+        .widgetWithText(FilledButton, 'Setujui (ACC)')
+        .first;
+    await tester.scrollUntilVisible(
+      approveButton,
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(approveButton);
+    await tester.tap(approveButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Proyek disetujui dan sudah masuk feed.'), findsOneWidget);
+
+    await _switchAccount(tester);
+    await tester.ensureVisible(find.text('Pengajuan saya'));
+    await tester.tap(find.text('Pengajuan saya'));
+    await tester.pumpAndSettle();
+    final manageApplicants = find.text('Kelola pelamar (rekrutmen terbuka)');
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -360),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(manageApplicants);
+    await tester.tap(manageApplicants);
+    await tester.pumpAndSettle();
+    final toggle = tester.widget<SwitchListTile>(
+      find.byKey(const Key('recruitment_open_toggle')),
+    );
+    await tester.tap(find.byKey(const Key('recruitment_open_toggle')));
+    await tester.pumpAndSettle();
+    expect(toggle.value, isTrue);
+    expect(find.text('Pengajuan baru ditutup.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('recruitment_open_toggle')));
+    await tester.pumpAndSettle();
+    expect(find.text('Siswa dapat mengajukan diri.'), findsOneWidget);
+    await tester.tap(find.text('Tutup').last);
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Keluar'));
+    await tester.tap(find.byTooltip('Keluar'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('login_submit')), findsOneWidget);
+    tester.view.physicalSize = const Size(390, 1100);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('login_role_selector')),
+        matching: find.text('Siswa'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('open_registration')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('open_registration')));
+    await tester.tap(find.byKey(const Key('open_registration')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('registration_name')));
+    await tester.enterText(
+      find.byKey(const Key('registration_name')),
+      'Dewi Anggraini',
+    );
+    await tester.ensureVisible(find.byKey(const Key('registration_nim')));
+    await tester.enterText(
+      find.byKey(const Key('registration_nim')),
+      '2413025099',
+    );
+    await tester.ensureVisible(find.byKey(const Key('registration_username')));
+    await tester.enterText(
+      find.byKey(const Key('registration_username')),
+      'dewi.angg',
+    );
+    await tester.ensureVisible(find.byKey(const Key('registration_email')));
+    await tester.enterText(
+      find.byKey(const Key('registration_email')),
+      'dewi.angg@school.id',
+    );
+    await tester.ensureVisible(find.byKey(const Key('registration_password')));
+    await tester.enterText(
+      find.byKey(const Key('registration_password')),
+      'password123',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('registration_confirm_password')),
+    );
+    await tester.enterText(
+      find.byKey(const Key('registration_confirm_password')),
+      'password123',
+    );
+    await tester.ensureVisible(find.byKey(const Key('registration_submit')));
+    await tester.tap(find.byKey(const Key('registration_submit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('login_password')),
+      'password123',
+    );
+    await tester.ensureVisible(find.byKey(const Key('login_submit')));
+    await tester.tap(find.byKey(const Key('login_submit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Halo, Dewi'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Proyek Kolaborasi Siswa'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final projectCard = find.ancestor(
+      of: find.text('Proyek Kolaborasi Siswa'),
+      matching: find.byType(Card),
+    );
+    final projectDetail = find.descendant(
+      of: projectCard,
+      matching: find.widgetWithText(TextButton, 'Detail'),
+    );
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -340),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(projectDetail);
+    await tester.tap(projectDetail);
+    await tester.pumpAndSettle();
+    expect(find.text('Proyek Kolaborasi Siswa'), findsNWidgets(2));
+    await tester.tap(find.text('Ajukan bergabung'));
+    await tester.pumpAndSettle();
+
+    await _switchAccount(tester);
+    await tester.ensureVisible(find.text('Pengajuan saya'));
+    await tester.tap(find.text('Pengajuan saya'));
+    await tester.pumpAndSettle();
+    final projectApplications = find.text('Kelola pelamar (rekrutmen terbuka)');
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(projectApplications);
+    await tester.tap(projectApplications);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('accept_Dewi Anggraini')));
+    await tester.tap(find.byKey(const Key('accept_Dewi Anggraini')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tutup').last);
+    await tester.pumpAndSettle();
+
+    await _switchAccount(tester, studentEmail: 'dewi.angg@school.id');
+    await tester.ensureVisible(find.text('Lamaran saya'));
+    await tester.tap(find.text('Lamaran saya'));
+    await tester.pumpAndSettle();
+    expect(find.text('Diterima'), findsWidgets);
+    await tester.tap(find.byKey(const Key('open_application_workspace')));
+    await tester.pumpAndSettle();
+    expect(find.text('Proyek Kolaborasi Siswa'), findsOneWidget);
+    expect(find.text('Workspace belum tersedia'), findsNothing);
+  });
+
   testWidgets('logout returns to login page', (WidgetTester tester) async {
     await _loginAs(tester);
 
@@ -642,14 +912,51 @@ void main() {
   });
 }
 
-Future<void> _loginAs(WidgetTester tester, {String role = 'Siswa'}) async {
+Future<void> _registerAndLoginAs(
+  WidgetTester tester, {
+  required String name,
+  required String nim,
+  required String username,
+  required String email,
+  String password = 'password123',
+}) async {
   await tester.pumpWidget(const ProjectNexusApp());
   await tester.pump(AuthGate.splashDuration);
   await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('open_registration')));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const Key('registration_name')), name);
+  await tester.enterText(find.byKey(const Key('registration_nim')), nim);
   await tester.enterText(
-    find.byKey(const Key('login_email')),
-    'test@school.id',
+    find.byKey(const Key('registration_username')),
+    username,
   );
+  await tester.enterText(find.byKey(const Key('registration_email')), email);
+  await tester.enterText(
+    find.byKey(const Key('registration_password')),
+    password,
+  );
+  await tester.enterText(
+    find.byKey(const Key('registration_confirm_password')),
+    password,
+  );
+  await tester.ensureVisible(find.byKey(const Key('registration_submit')));
+  await tester.tap(find.byKey(const Key('registration_submit')));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const Key('login_password')), password);
+  await tester.tap(find.byKey(const Key('login_submit')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _loginAs(
+  WidgetTester tester, {
+  String role = 'Siswa',
+  String email = 'test@school.id',
+}) async {
+  await tester.pumpWidget(const ProjectNexusApp());
+  await tester.pump(AuthGate.splashDuration);
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const Key('login_email')), email);
   await tester.enterText(
     find.byKey(const Key('login_password')),
     'password123',
@@ -673,6 +980,7 @@ Future<void> _switchAccount(
   WidgetTester tester, {
   String role = 'Siswa',
   String teacherEmail = 'budi.santoso@school.id',
+  String studentEmail = 'test@school.id',
 }) async {
   await tester.drag(find.byType(CustomScrollView).first, const Offset(0, 1000));
   await tester.pumpAndSettle();
@@ -681,7 +989,7 @@ Future<void> _switchAccount(
   await tester.pumpAndSettle();
   await tester.enterText(
     find.byKey(const Key('login_email')),
-    role == 'Guru' ? teacherEmail : 'test@school.id',
+    role == 'Guru' ? teacherEmail : studentEmail,
   );
   await tester.enterText(
     find.byKey(const Key('login_password')),
@@ -713,6 +1021,8 @@ Future<void> _submitProject(
     find.byKey(const Key('draft_project_description')),
     'Mengembangkan solusi yang bermanfaat bagi lingkungan sekolah.',
   );
+  await tester.ensureVisible(find.byKey(const Key('draft_skill_Flutter')));
+  await tester.tap(find.byKey(const Key('draft_skill_Flutter')));
   await tester.ensureVisible(find.byKey(const Key('draft_project_teacher')));
   await tester.tap(find.byKey(const Key('draft_project_teacher')));
   await tester.pumpAndSettle();

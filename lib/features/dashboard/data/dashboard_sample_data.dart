@@ -6,6 +6,7 @@ const dashboardSkillFilters = ['Semua', 'UI/UX', 'Flutter', 'Riset', 'Penulis'];
 
 const dashboardProjects = [
   ProjectListing(
+    id: 'sample-garden',
     title: 'Draf Sistem Kebun Sekolah',
     leader: 'Nadia Putri',
     event: 'Proyek Inovasi Sekolah',
@@ -14,17 +15,21 @@ const dashboardProjects = [
     skills: ['Riset', 'Flutter'],
     teacherName: 'Budi Santoso',
     statusAcc: 'pending',
+    recruitmentOpen: false,
   ),
   ProjectListing(
+    id: 'sample-water-iot',
     title: 'Aplikasi Pemantau Kualitas Air IoT',
-    leader: 'Budi Santoso',
+    leader: 'Nadia Putri',
     event: 'Olimpiade Sains Nasional',
     description: 'Membangun perangkat IoT dan aplikasi untuk memantau kualitas air secara real-time.',
     skills: ['Flutter', 'IoT', 'UI/UX'],
     teacherName: 'Budi Santoso',
     statusAcc: 'approved',
+    recruitmentOpen: true,
   ),
   ProjectListing(
+    id: 'sample-library',
     title: 'Sistem Informasi Perpustakaan',
     leader: 'Siti Aminah',
     event: 'Lomba Inovasi Digital',
@@ -32,8 +37,10 @@ const dashboardProjects = [
     skills: ['Flutter', 'UI/UX', 'Basis Data'],
     teacherName: 'Siti Rahmawati',
     statusAcc: 'approved',
+    recruitmentOpen: true,
   ),
   ProjectListing(
+    id: 'sample-local-history',
     title: 'Peta Cerita Sejarah Lokal',
     leader: 'Rizky Ramadhan',
     event: 'Kompetisi Riset Pelajar',
@@ -41,6 +48,7 @@ const dashboardProjects = [
     skills: ['Riset', 'Penulis', 'Desain'],
     teacherName: 'Budi Santoso',
     statusAcc: 'approved',
+    recruitmentOpen: true,
   ),
 ];
 

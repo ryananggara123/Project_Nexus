@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class ProjectListing {
   const ProjectListing({
+    required this.id,
     required this.title,
     required this.leader,
     required this.event,
@@ -9,9 +10,11 @@ class ProjectListing {
     required this.skills,
     required this.teacherName,
     required this.statusAcc,
+    required this.recruitmentOpen,
     this.reviewNote,
   });
 
+  final String id;
   final String title;
   final String leader;
   final String event;
@@ -19,16 +22,19 @@ class ProjectListing {
   final List<String> skills;
   final String teacherName;
   final String statusAcc;
+  final bool recruitmentOpen;
   final String? reviewNote;
 
   ProjectListing copyWith({
     String? title,
     String? description,
     String? statusAcc,
+    bool? recruitmentOpen,
     String? reviewNote,
     bool clearReviewNote = false,
   }) {
     return ProjectListing(
+      id: id,
       title: title ?? this.title,
       leader: leader,
       event: event,
@@ -36,6 +42,7 @@ class ProjectListing {
       skills: skills,
       teacherName: teacherName,
       statusAcc: statusAcc ?? this.statusAcc,
+      recruitmentOpen: recruitmentOpen ?? this.recruitmentOpen,
       reviewNote: clearReviewNote ? null : reviewNote ?? this.reviewNote,
     );
   }
