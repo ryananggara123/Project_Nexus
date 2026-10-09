@@ -4,12 +4,14 @@ import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../data/dashboard_sample_data.dart';
 import '../models/dashboard_models.dart';
+import '../models/project_application.dart';
 import '../models/portfolio_item.dart';
 import '../models/project_workflow_store.dart';
 import '../models/profile_data.dart';
 import '../models/workspace_task.dart';
 import '../widgets/achievement_card.dart';
 import '../widgets/approval_request_card.dart';
+import '../widgets/applicant_management_dialog.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_tab_bar.dart';
 import '../widgets/draft_project_sheet.dart';
@@ -44,41 +46,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _navigationIndex = 0;
   int _dashboardTab = 0;
+  String? _selectedWorkspaceProjectId;
   String _selectedSkill = 'Semua';
   String _searchQuery = '';
-  final Set<String> _appliedProjectTitles = {};
-  final List<WorkspaceTask> _workspaceTasks = [
-    const WorkspaceTask(
-      title: 'Riset parameter kualitas air',
-      assignee: 'Rizky Ramadhan',
-      dueLabel: 'Hari ini',
-      status: WorkspaceTaskStatus.done,
-    ),
-    const WorkspaceTask(
-      title: 'Menyusun rancangan sensor IoT',
-      assignee: 'Nadia Putri',
-      dueLabel: 'Besok',
-      status: WorkspaceTaskStatus.inProgress,
-    ),
-    const WorkspaceTask(
-      title: 'Membuat tampilan dashboard aplikasi',
-      assignee: 'Ryan Anggara Deki',
-      dueLabel: '12 Okt 2026',
-      status: WorkspaceTaskStatus.inProgress,
-    ),
-    const WorkspaceTask(
-      title: 'Menghubungkan data sensor ke aplikasi',
-      assignee: 'Ryan Anggara Deki',
-      dueLabel: '15 Okt 2026',
-      status: WorkspaceTaskStatus.todo,
-    ),
-    const WorkspaceTask(
-      title: 'Menyiapkan bahan presentasi proyek',
-      assignee: 'Nadia Putri',
-      dueLabel: '18 Okt 2026',
-      status: WorkspaceTaskStatus.todo,
-    ),
-  ];
+  final Map<String, List<WorkspaceTask>> _workspaceTasks = {
+    'sample-water-iot': [
+      const WorkspaceTask(
+        title: 'Riset parameter kualitas air',
+        assignee: 'Rizky Ramadhan',
+        dueLabel: 'Hari ini',
+        status: WorkspaceTaskStatus.done,
+      ),
+      const WorkspaceTask(
+        title: 'Menyusun rancangan sensor IoT',
+        assignee: 'Nadia Putri',
+        dueLabel: 'Besok',
+        status: WorkspaceTaskStatus.inProgress,
+      ),
+      const WorkspaceTask(
+        title: 'Membuat tampilan dashboard aplikasi',
+        assignee: 'Ryan Anggara Deki',
+        dueLabel: '12 Okt 2026',
+        status: WorkspaceTaskStatus.inProgress,
+      ),
+      const WorkspaceTask(
+        title: 'Menghubungkan data sensor ke aplikasi',
+        assignee: 'Ryan Anggara Deki',
+        dueLabel: '15 Okt 2026',
+        status: WorkspaceTaskStatus.todo,
+      ),
+      const WorkspaceTask(
+        title: 'Menyiapkan bahan presentasi proyek',
+        assignee: 'Nadia Putri',
+        dueLabel: '18 Okt 2026',
+        status: WorkspaceTaskStatus.todo,
+      ),
+    ],
+  };
   final List<PortfolioItem> _portfolioItems = [
     const PortfolioItem(
       owner: 'Ryan Anggara Deki',
@@ -150,6 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         '${project.title} ${project.leader} ${project.event} ${project.skills.join(' ')}'
             .toLowerCase();
     return project.statusAcc == 'approved' &&
+        project.recruitmentOpen &&
         matchesSkill &&
         searchText.contains(_searchQuery.toLowerCase());
   }).toList();
@@ -426,12 +431,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ];
 
   Widget _buildWorkspace() {
+    final project = _workspaceProject;
+    if (project == null) {
+      return const _WorkspaceAccessState();
+    }
+    final tasks = _workspaceTasks.putIfAbsent(project.id, () => []);
     return WorkspaceScreen(
-      tasks: _workspaceTasks,
+      availableProjects: _workspaceProjects,
+      selectedProjectId: project.id,
+      onProjectChanged: (projectId) =>
+          setState(() => _selectedWorkspaceProjectId = projectId),
+      projectTitle: project.title,
+      members: _workspaceMembers(project),
+      tasks: tasks,
       isTeacherView: _isTeacherView,
-      onAddTask: (task) => setState(() => _workspaceTasks.add(task)),
-      onTaskStatusChanged: _updateWorkspaceTaskStatus,
+      onAddTask: (task) => setState(() => tasks.add(task)),
+      onTaskStatusChanged: (task, status) =>
+          _updateWorkspaceTaskStatus(project.id, task, status),
     );
+  }
+
+  List<ProjectListing> get _workspaceProjects => _projects.where((project) {
+    final name = _isTeacherView ? _currentTeacherName : _profile.name;
+    return widget.projectStore.canAccessWorkspace(
+      project.id,
+      name,
+      widget.role,
+    );
+  }).toList();
+
+  ProjectListing? get _workspaceProject {
+    final accessibleProjects = _workspaceProjects;
+    if (accessibleProjects.isEmpty) return null;
+    final selectedProject = accessibleProjects.where(
+      (project) => project.id == _selectedWorkspaceProjectId,
+    );
+    if (selectedProject.isNotEmpty) return selectedProject.first;
+    return accessibleProjects.firstWhere(
+      (project) => _workspaceTasks.containsKey(project.id),
+      orElse: () => accessibleProjects.first,
+    );
+  }
+
+  List<(String, String)> _workspaceMembers(ProjectListing project) {
+    final members = <(String, String)>[(project.leader, 'Ketua proyek')];
+    for (final name
+        in widget.projectStore.acceptedMembers(project.id).skip(1)) {
+      if (name != project.leader) members.add((name, 'Anggota tim'));
+    }
+    if (!members.any((member) => member.$1 == project.teacherName)) {
+      members.add((project.teacherName, 'Guru pendamping'));
+    }
+    return members;
   }
 
   Widget _buildPortfolio() {
@@ -453,13 +504,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _updateWorkspaceTaskStatus(
+    String projectId,
     WorkspaceTask task,
     WorkspaceTaskStatus status,
   ) {
     setState(() {
-      final index = _workspaceTasks.indexOf(task);
+      final tasks = _workspaceTasks.putIfAbsent(projectId, () => []);
+      final index = tasks.indexOf(task);
       if (index != -1) {
-        _workspaceTasks[index] = task.copyWith(status: status);
+        tasks[index] = task.copyWith(status: status);
       }
     });
   }
@@ -487,7 +540,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 18),
                   if (_dashboardTab == 0) ..._buildProjectFeed(),
                   if (_dashboardTab == 1) ..._buildStudentSubmissions(),
-                  if (_dashboardTab == 2) ..._buildAchievementCatalog(),
+                  if (_dashboardTab == 2) ..._buildStudentApplications(),
+                  if (_dashboardTab == 3) ..._buildAchievementCatalog(),
                 ],
               ),
             ),
@@ -627,9 +681,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onRevise: project.statusAcc == 'rejected'
               ? () => _reviseProject(project)
               : null,
+          onManageApplicants: project.statusAcc == 'approved'
+              ? () => _showApplicantManagement(project)
+              : null,
         ),
       ),
     ];
+  }
+
+  List<Widget> _buildStudentApplications() {
+    final applications = widget.projectStore.applications
+        .where(
+          (application) =>
+              application.applicantName.toLowerCase() ==
+              _profile.name.trim().toLowerCase(),
+        )
+        .toList()
+        .reversed
+        .toList();
+    if (applications.isEmpty) {
+      return const [
+        _EmptyDashboardState(
+          icon: Icons.mark_email_unread_outlined,
+          message: 'Kamu belum mengirim lamaran ke proyek mana pun.',
+        ),
+      ];
+    }
+
+    return applications.map((application) {
+      final project = _projects.firstWhere(
+        (item) => item.id == application.projectId,
+        orElse: () => ProjectListing(
+          id: application.projectId,
+          title: 'Proyek tidak tersedia',
+          leader: '',
+          event: '',
+          description: '',
+          skills: const [],
+          teacherName: '',
+          statusAcc: 'rejected',
+          recruitmentOpen: false,
+        ),
+      );
+      return _StudentApplicationCard(
+        project: project,
+        application: application,
+        onOpenWorkspace: application.status == ProjectApplicationStatus.accepted
+            ? () => setState(() {
+                _selectedWorkspaceProjectId = application.projectId;
+                _navigationIndex = 1;
+              })
+            : null,
+      );
+    }).toList();
   }
 
   Widget _buildStudentWelcome() {
@@ -639,7 +743,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(23),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF102F35), ProjectNexusColors.tealDark, Color(0xFF176B68)],
+          colors: [
+            Color(0xFF102F35),
+            ProjectNexusColors.tealDark,
+            Color(0xFF176B68),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -855,10 +963,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               'Rekrutmen terbuka',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: _ink,
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: _ink, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: 8),
@@ -925,53 +1031,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _showProjectDetails(ProjectListing project) async {
+    final application = widget.projectStore.applicationFor(
+      project.id,
+      _profile.name,
+    );
+    final isLeader =
+        project.leader.toLowerCase() == _profile.name.trim().toLowerCase();
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: Text(project.title),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(project.description),
-              const SizedBox(height: 14),
-              Text('Ketua: ${project.leader}'),
-              Text('Target: ${project.event}'),
-              const SizedBox(height: 12),
-              const Text(
-                'Keahlian yang dicari',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: project.skills.map(SkillTag.new).toList(),
-              ),
-            ],
-          ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(project.description),
+            const SizedBox(height: 14),
+            Text('Ketua: ${project.leader}'),
+            Text('Target: ${project.event}'),
+            Text(
+              '${widget.projectStore.acceptedMembers(project.id).length} anggota termasuk ketua',
+            ),
+            Text(
+              project.recruitmentOpen
+                  ? 'Rekrutmen sedang terbuka.'
+                  : 'Rekrutmen sedang ditutup.',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Keahlian yang dicari',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: project.skills.map(SkillTag.new).toList(),
+            ),
+          ],
         ),
         actions: [
-          if (!_isTeacherView)
+          if (isLeader)
             FilledButton(
-              onPressed: _appliedProjectTitles.contains(project.title)
+              onPressed: () {
+                Navigator.pop(context);
+                _showApplicantManagement(project);
+              },
+              child: const Text('Kelola pelamar'),
+            )
+          else if (!_isTeacherView)
+            FilledButton(
+              key: Key('apply_${project.id}'),
+              onPressed: application != null || !project.recruitmentOpen
                   ? null
                   : () {
-                      Navigator.pop(context);
-                      setState(() => _appliedProjectTitles.add(project.title));
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Pengajuan bergabung terkirim kepada ketua proyek.',
-                          ),
-                        ),
+                      final result = widget.projectStore.apply(
+                        projectId: project.id,
+                        applicantName: _profile.name,
+                        role: widget.role,
+                        applicantSkills: _profile.skills,
+                        applicantPortfolio: _portfolioItems
+                            .where((item) => item.owner == _profile.name)
+                            .toList(),
                       );
+                      Navigator.pop(context);
+                      final message = switch (result) {
+                        WorkflowActionResult.success =>
+                          'Lamaran telah dikirim kepada ketua proyek.',
+                        WorkflowActionResult.cannotApplyToOwnProject =>
+                          'Kamu tidak dapat melamar ke proyek sendiri.',
+                        WorkflowActionResult.duplicateApplication =>
+                          'Kamu sudah pernah melamar ke proyek ini.',
+                        WorkflowActionResult.recruitmentClosed =>
+                          'Rekrutmen proyek sudah ditutup.',
+                        _ => 'Lamaran tidak dapat dikirim untuk proyek ini.',
+                      };
+                      ScaffoldMessenger.of(this.context)
+                          .showSnackBar(SnackBar(content: Text(message)));
                     },
               child: Text(
-                _appliedProjectTitles.contains(project.title)
-                    ? 'Pengajuan terkirim'
-                    : 'Ajukan bergabung',
+                application?.status.label ??
+                    (project.recruitmentOpen
+                        ? 'Ajukan bergabung'
+                        : 'Rekrutmen ditutup'),
               ),
             ),
           TextButton(
@@ -979,6 +1122,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: const Text('Tutup'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showApplicantManagement(ProjectListing project) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => ApplicantManagementDialog(
+        project: project,
+        leaderName: _profile.name,
+        role: widget.role,
+        store: widget.projectStore,
       ),
     );
   }
@@ -991,7 +1146,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) => DraftProjectSheet(studentName: _profile.name),
     );
     if (submittedProject != null && mounted) {
-      widget.projectStore.submit(submittedProject);
+      final result = widget.projectStore.submit(
+        submittedProject,
+        submitterName: _profile.name,
+        role: widget.role,
+      );
+      if (result != WorkflowActionResult.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pengajuan proyek tidak dapat disimpan.'),
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Draf terkirim dan menunggu persetujuan guru.'),
@@ -1011,11 +1178,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
     if (revisedProject == null || !mounted) return;
-    widget.projectStore.resubmit(
+    final result = widget.projectStore.resubmit(
       project,
       title: revisedProject.title,
       description: revisedProject.description,
+      studentName: _profile.name,
+      role: widget.role,
     );
+    if (result != WorkflowActionResult.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Revisi proyek tidak dapat dikirim.')),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Revisi terkirim dan menunggu tinjauan guru.'),
@@ -1028,7 +1203,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _updateProjectStatus(ProjectListing project, String status) {
-    widget.projectStore.review(project, status: status);
+    final result = widget.projectStore.review(
+      project,
+      status: status,
+      reviewerName: _currentTeacherName,
+      role: widget.role,
+    );
+    if (result != WorkflowActionResult.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hanya guru pendamping proyek yang dapat meninjaunya.'),
+        ),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -1080,11 +1268,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
     if (note == null || !mounted) return;
-    widget.projectStore.review(
+    final reviewResult = widget.projectStore.review(
       project,
       status: 'rejected',
+      reviewerName: _currentTeacherName,
+      role: widget.role,
       note: note.isEmpty ? null : note,
     );
+    if (reviewResult != WorkflowActionResult.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hanya guru pendamping proyek yang dapat meninjaunya.'),
+        ),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pengajuan ditolak dan siswa diberi tahu.')),
     );
@@ -1092,10 +1290,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _StudentSubmissionCard extends StatelessWidget {
-  const _StudentSubmissionCard(this.project, {this.onRevise});
+  const _StudentSubmissionCard(
+    this.project, {
+    this.onRevise,
+    this.onManageApplicants,
+  });
 
   final ProjectListing project;
   final VoidCallback? onRevise;
+  final VoidCallback? onManageApplicants;
 
   @override
   Widget build(BuildContext context) {
@@ -1164,10 +1367,8 @@ class _StudentSubmissionCard extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               project.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF526568),
-                height: 1.45,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: const Color(0xFF526568), height: 1.45),
             ),
             const SizedBox(height: 13),
             Container(
@@ -1257,6 +1458,20 @@ class _StudentSubmissionCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(13),
                     ),
+                  ),
+                ),
+              ),
+            ],
+            if (onManageApplicants != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: Key('manage_applicants_${project.id}'),
+                  onPressed: onManageApplicants,
+                  icon: const Icon(Icons.groups_2_outlined),
+                  label: Text(
+                    'Kelola pelamar (${project.recruitmentOpen ? 'rekrutmen terbuka' : 'rekrutmen ditutup'})',
                   ),
                 ),
               ),
@@ -1397,6 +1612,145 @@ class _EmptyApprovalState extends StatelessWidget {
             style: TextStyle(color: Color(0xFF627174)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WorkspaceAccessState extends StatelessWidget {
+  const _WorkspaceAccessState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.lock_outline_rounded,
+              size: 42,
+              color: ProjectNexusColors.teal,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Workspace belum tersedia',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: ProjectNexusColors.ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Akses diberikan kepada ketua, anggota yang diterima, dan guru pendamping setelah proyek disetujui.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: ProjectNexusColors.muted, height: 1.45),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyDashboardState extends StatelessWidget {
+  const _EmptyDashboardState({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 42),
+      child: Column(
+        children: [
+          Icon(icon, size: 38, color: ProjectNexusColors.teal),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: ProjectNexusColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentApplicationCard extends StatelessWidget {
+  const _StudentApplicationCard({
+    required this.project,
+    required this.application,
+    this.onOpenWorkspace,
+  });
+
+  final ProjectListing project;
+  final ProjectApplication application;
+  final VoidCallback? onOpenWorkspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon) = switch (application.status) {
+      ProjectApplicationStatus.pending => (
+        const Color(0xFF9A572C),
+        Icons.hourglass_top_rounded,
+      ),
+      ProjectApplicationStatus.accepted => (
+        const Color(0xFF26734D),
+        Icons.check_circle_outline_rounded,
+      ),
+      ProjectApplicationStatus.rejected => (
+        const Color(0xFFAD463D),
+        Icons.cancel_outlined,
+      ),
+    };
+    return Card(
+      key: Key('student_application_${application.id}'),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              project.title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: ProjectNexusColors.ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 7),
+                Text(
+                  application.status.label,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Ketua proyek: ${project.leader}',
+              style: const TextStyle(color: ProjectNexusColors.muted),
+            ),
+            if (onOpenWorkspace != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.tonalIcon(
+                  key: const Key('open_application_workspace'),
+                  onPressed: onOpenWorkspace,
+                  icon: const Icon(Icons.view_kanban_outlined),
+                  label: const Text('Buka workspace'),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -21,7 +21,18 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final Set<String> _selectedSkills = {};
   late String? _selectedTeacher;
+
+  static const _availableSkills = [
+    'Flutter',
+    'UI/UX',
+    'Riset',
+    'Penulis',
+    'IoT',
+    'Desain',
+    'Basis Data',
+  ];
 
   @override
   void initState() {
@@ -30,6 +41,7 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
     _titleController.text = project?.title ?? '';
     _descriptionController.text = project?.description ?? '';
     _selectedTeacher = project?.teacherName;
+    _selectedSkills.addAll(project?.skills ?? const []);
   }
 
   @override
@@ -172,6 +184,57 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                         : null,
                   ),
                   const SizedBox(height: 13),
+                  FormField<Set<String>>(
+                    initialValue: _selectedSkills,
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Pilih minimal satu keahlian yang dibutuhkan.'
+                        : null,
+                    builder: (field) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Keahlian yang dibutuhkan',
+                          style: TextStyle(
+                            color: ProjectNexusColors.ink,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 2,
+                          children: _availableSkills.map((skill) {
+                            final selected = _selectedSkills.contains(skill);
+                            return FilterChip(
+                              key: Key('draft_skill_$skill'),
+                              label: Text(skill),
+                              selected: selected,
+                              onSelected: (isSelected) {
+                                if (isSelected) {
+                                  _selectedSkills.add(skill);
+                                } else {
+                                  _selectedSkills.remove(skill);
+                                }
+                                field.didChange(Set.of(_selectedSkills));
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        if (field.errorText != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 5),
+                            child: Text(
+                              field.errorText!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 13),
                   DropdownButtonFormField<String>(
                     key: const Key('draft_project_teacher'),
                     initialValue: _selectedTeacher,
@@ -219,14 +282,16 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                             context,
                             previous == null
                                 ? ProjectListing(
+                                    id: 'project-${DateTime.now().microsecondsSinceEpoch}',
                                     title: _titleController.text.trim(),
                                     leader: widget.studentName,
                                     event: 'Proyek siswa',
                                     description: _descriptionController.text
                                         .trim(),
-                                    skills: const [],
+                                    skills: _selectedSkills.toList(),
                                     teacherName: _selectedTeacher!,
                                     statusAcc: 'pending',
+                                    recruitmentOpen: false,
                                   )
                                 : previous.copyWith(
                                     title: _titleController.text.trim(),
