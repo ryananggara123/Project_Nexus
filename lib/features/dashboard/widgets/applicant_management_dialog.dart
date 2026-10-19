@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../models/dashboard_models.dart';
 import '../models/project_application.dart';
 import '../models/project_workflow_store.dart';
+import 'project_card.dart';
 
 class ApplicantManagementDialog extends StatelessWidget {
   const ApplicantManagementDialog({
@@ -122,14 +124,12 @@ class ApplicantManagementDialog extends StatelessWidget {
                     ...acceptedApplications.map(
                       (application) => ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person_rounded),
-                        ),
+                        leading: PersonAvatar(application.applicantName),
                         title: Text(application.applicantName),
                         subtitle: const Text('Anggota tim'),
                         trailing: const Icon(
                           Icons.check_circle_rounded,
-                          color: Color(0xFF39825A),
+                          color: ProjectNexusColors.success,
                         ),
                       ),
                     ),
@@ -144,9 +144,7 @@ class ApplicantManagementDialog extends StatelessWidget {
                     ...rejectedApplications.map(
                       (application) => ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person_outline_rounded),
-                        ),
+                        leading: PersonAvatar(application.applicantName),
                         title: Text(application.applicantName),
                         subtitle: const Text('Lamaran ditolak'),
                       ),
@@ -241,8 +239,8 @@ class _ApplicationTile extends StatelessWidget {
             Text(
               _matchingSkillsLabel(),
               style: const TextStyle(
-                color: Color(0xFF087E8B),
-                fontWeight: FontWeight.w700,
+                color: ProjectNexusColors.teal,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 4),

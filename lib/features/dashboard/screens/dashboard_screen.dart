@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
+import '../../auth/widgets/auth_widgets.dart';
 import '../data/dashboard_sample_data.dart';
+import '../data/recommendation_preferences_store.dart';
 import '../models/dashboard_models.dart';
 import '../models/project_application.dart';
 import '../models/portfolio_item.dart';
+import '../models/project_recommender.dart';
 import '../models/project_workflow_store.dart';
 import '../models/profile_data.dart';
 import '../models/workspace_task.dart';
@@ -42,13 +47,15 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const _ink = ProjectNexusColors.ink;
+  static const _preferencesStore = RecommendationPreferencesStore();
 
   int _navigationIndex = 0;
   int _dashboardTab = 0;
   String? _selectedWorkspaceProjectId;
   String _selectedSkill = 'Semua';
   String _searchQuery = '';
+  bool _beginnerOnly = false;
+  bool _profileEditedBeforePreferencesLoad = false;
   final Map<String, List<WorkspaceTask>> _workspaceTasks = {
     'sample-water-iot': [
       const WorkspaceTask(
@@ -138,6 +145,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           email: 'ryan@school.id',
           bio: 'Siswa yang tertarik pada pengembangan aplikasi mobile, desain produk digital, dan kolaborasi lintas keahlian.',
           skills: ['Flutter', 'UI/UX', 'Prototyping', 'Kolaborasi'],
+          interests: ['Teknologi', 'Desain & UI/UX', 'Lingkungan'],
+          weeklyAvailableHours: 3,
         );
 
   bool get _isTeacherView => widget.role == UserRole.teacher;
@@ -147,22 +156,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       : 'budi.santoso@school.id';
   List<ProjectListing> get _projects => widget.projectStore.projects;
 
-  List<ProjectListing> get _visibleProjects => _projects.where((project) {
-    final matchesSkill =
-        _selectedSkill == 'Semua' || project.skills.contains(_selectedSkill);
-    final searchText =
-        '${project.title} ${project.leader} ${project.event} ${project.skills.join(' ')}'
-            .toLowerCase();
-    return project.statusAcc == 'approved' &&
-        project.recruitmentOpen &&
-        matchesSkill &&
-        searchText.contains(_searchQuery.toLowerCase());
-  }).toList();
+  List<ProjectRecommendation> get _visibleProjects {
+    final filteredProjects = _projects.where((project) {
+      final matchesSkill =
+          _selectedSkill == 'Semua' || project.skills.contains(_selectedSkill);
+      final searchText =
+          '${project.title} ${project.leader} ${project.event} ${project.skills.join(' ')}'
+              .toLowerCase();
+      return project.statusAcc == 'approved' &&
+          project.recruitmentOpen &&
+          (!_beginnerOnly ||
+              project.difficulty == ProjectDifficulty.beginner) &&
+          matchesSkill &&
+          searchText.contains(_searchQuery.toLowerCase());
+    });
+    return ProjectRecommender.rank(
+      projects: filteredProjects,
+      profile: _profile,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     widget.projectStore.addListener(_onProjectStoreChanged);
+    if (!_isTeacherView) _restoreRecommendationPreferences();
   }
 
   @override
@@ -208,8 +226,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           floatingActionButton: !_isTeacherView && _navigationIndex == 0
               ? FloatingActionButton.extended(
                   onPressed: _openDraftForm,
-                  backgroundColor: _ink,
-                  foregroundColor: Colors.white,
                   icon: const Icon(Icons.add),
                   label: const Text('Ajukan proyek'),
                 )
@@ -233,72 +249,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       width: 248,
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 25, 16, 18),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 30),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        ProjectNexusColors.teal,
-                        ProjectNexusColors.tealDark,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.hub_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 11),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ProjectNexus',
-                        style: TextStyle(
-                          color: ProjectNexusColors.ink,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'RUANG KOLABORASI',
-                        style: TextStyle(
-                          color: ProjectNexusColors.muted,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 8,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child: Text(
-              _isTeacherView ? 'PANEL GURU' : 'RUANG SISWA',
-              style: const TextStyle(
-                color: ProjectNexusColors.muted,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(8, 0, 8, 28),
+            child: BrandMark(size: 36),
           ),
           Expanded(
             child: NavigationRail(
@@ -312,20 +269,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               useIndicator: true,
               indicatorColor: ProjectNexusColors.mint,
               selectedIconTheme: const IconThemeData(
-                color: ProjectNexusColors.tealDark,
+                color: ProjectNexusColors.teal,
               ),
               selectedLabelTextStyle: const TextStyle(
-                color: ProjectNexusColors.tealDark,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
+                color: ProjectNexusColors.ink,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
               unselectedIconTheme: const IconThemeData(
                 color: ProjectNexusColors.muted,
               ),
               unselectedLabelTextStyle: const TextStyle(
                 color: ProjectNexusColors.muted,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
               ),
               destinations: const [
                 NavigationRailDestination(
@@ -351,35 +308,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const Divider(color: ProjectNexusColors.border),
+          const Divider(),
           ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            leading: CircleAvatar(
-              radius: 18,
-              backgroundColor: ProjectNexusColors.mint,
-              child: Text(
-                _profile.name.isEmpty ? '?' : _profile.name[0].toUpperCase(),
-                style: const TextStyle(
-                  color: ProjectNexusColors.tealDark,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            leading: PersonAvatar(_profile.name),
             title: Text(
               _profile.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: ProjectNexusColors.ink,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
             subtitle: Text(
               _isTeacherView ? 'Guru pendamping' : 'Siswa',
               style: const TextStyle(
                 color: ProjectNexusColors.muted,
-                fontSize: 10,
+                fontSize: 12,
               ),
             ),
             trailing: IconButton(
@@ -395,15 +342,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildBottomNavigation() {
-    return NavigationBar(
-      height: 72,
-      elevation: 12,
-      shadowColor: ProjectNexusColors.ink.withValues(alpha: 0.08),
-      selectedIndex: _navigationIndex,
-      onDestinationSelected: (index) {
-        setState(() => _navigationIndex = index);
-      },
-      destinations: _navigationDestinations,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: ProjectNexusColors.border)),
+      ),
+      child: NavigationBar(
+        selectedIndex: _navigationIndex,
+        onDestinationSelected: (index) {
+          setState(() => _navigationIndex = index);
+        },
+        destinations: _navigationDestinations,
+      ),
     );
   }
 
@@ -433,10 +382,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildWorkspace() {
     final project = _workspaceProject;
     if (project == null) {
-      return const _WorkspaceAccessState();
+      return MenuPage(
+        header: _appHeader,
+        children: [
+          HeroBanner(
+            eyebrow: _isTeacherView ? 'PANEL PEMBIMBING' : 'RUANG KERJA TIM',
+            title: 'Workspace',
+            description: 'Atur pekerjaan bersama dan wujudkan ide jadi karya.',
+            icon: Icons.view_kanban_rounded,
+          ),
+          const _WorkspaceAccessState(),
+        ],
+      );
     }
     final tasks = _workspaceTasks.putIfAbsent(project.id, () => []);
     return WorkspaceScreen(
+      header: _appHeader,
       availableProjects: _workspaceProjects,
       selectedProjectId: project.id,
       onProjectChanged: (projectId) =>
@@ -486,10 +447,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildPortfolio() {
+    final completedContributions = [
+      for (final entry in _workspaceTasks.entries)
+        for (final task in entry.value)
+          if (task.status == WorkspaceTaskStatus.done)
+            for (final project in _projects)
+              if (project.id == entry.key)
+                PortfolioItem(
+                  owner: task.assignee,
+                  title: task.title,
+                  category: 'Kontribusi · ${project.title}',
+                  description:
+                      'Tugas ini diselesaikan sebagai kontribusi pada proyek ${project.title}.',
+                  year: DateTime.now().year.toString(),
+                  icon: Icons.task_alt_rounded,
+                  color: ProjectNexusColors.teal,
+                  isContribution: true,
+                ),
+    ];
     return PortfolioScreen(
+      header: _appHeader,
       role: widget.role,
       studentName: _profile.name,
-      items: _portfolioItems,
+      items: [...completedContributions, ..._portfolioItems],
       onAddItem: (item) => setState(
         () => _portfolioItems.insert(0, item.copyWith(owner: _profile.name)),
       ),
@@ -498,10 +478,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildProfile() {
     return ProfileScreen(
+      header: _appHeader,
       profile: _profile,
-      onProfileChanged: (profile) => setState(() => _profile = profile),
+      onProfileChanged: _onProfileChanged,
     );
   }
+
+  Future<void> _restoreRecommendationPreferences() async {
+    final accountId = _preferenceAccountId;
+    final preferences = await _preferencesStore.load(accountId);
+    if (!mounted ||
+        preferences == null ||
+        _profileEditedBeforePreferencesLoad) {
+      return;
+    }
+    setState(() {
+      _profile = _profile.copyWith(
+        skills: preferences.skills,
+        interests: preferences.interests,
+        weeklyAvailableHours: preferences.weeklyAvailableHours,
+      );
+    });
+  }
+
+  void _onProfileChanged(ProfileData profile) {
+    setState(() {
+      _profileEditedBeforePreferencesLoad = true;
+      _profile = profile;
+    });
+    if (!_isTeacherView) {
+      unawaited(_saveRecommendationPreferences(profile));
+    }
+  }
+
+  Future<void> _saveRecommendationPreferences(ProfileData profile) async {
+    await _preferencesStore.save(_preferenceAccountId, profile);
+  }
+
+  String get _preferenceAccountId => widget.studentName ?? 'Ryan Anggara Deki';
 
   void _updateWorkspaceTaskStatus(
     String projectId,
@@ -517,37 +531,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  Widget get _appHeader =>
+      AppHeader(isTeacherView: _isTeacherView, onLogout: _logout);
+
   Widget _buildDashboard() {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-              sliver: SliverList.list(
-                children: [
-                  DashboardHeader(isTeacherView: false, onLogout: _logout),
-                  const SizedBox(height: 25),
-                  _buildStudentWelcome(),
-                  const SizedBox(height: 18),
-                  _buildStudentOverview(),
-                  const SizedBox(height: 24),
-                  DashboardTabBar(
-                    selectedIndex: _dashboardTab,
-                    onChanged: (index) => setState(() => _dashboardTab = index),
-                  ),
-                  const SizedBox(height: 18),
-                  if (_dashboardTab == 0) ..._buildProjectFeed(),
-                  if (_dashboardTab == 1) ..._buildStudentSubmissions(),
-                  if (_dashboardTab == 2) ..._buildStudentApplications(),
-                  if (_dashboardTab == 3) ..._buildAchievementCatalog(),
-                ],
-              ),
-            ),
-          ],
+    return MenuPage(
+      header: _appHeader,
+      bottomPadding: 120,
+      children: [
+        HeroBanner(
+          eyebrow: 'RUANG KOLABORASI SISWA',
+          title: 'Halo, $_firstName',
+          subtitle: 'Temukan tim yang tepat.',
+          description: 'Ide hebat tumbuh bersama keahlian yang beragam.',
+          icon: Icons.groups_2_rounded,
         ),
-      ),
+        const SizedBox(height: 16),
+        _buildStudentOverview(),
+        const SizedBox(height: 20),
+        DashboardTabBar(
+          selectedIndex: _dashboardTab,
+          onChanged: (index) => setState(() => _dashboardTab = index),
+        ),
+        const SizedBox(height: 20),
+        if (_dashboardTab == 0) ..._buildProjectFeed(),
+        if (_dashboardTab == 1) ..._buildStudentSubmissions(),
+        if (_dashboardTab == 2) ..._buildStudentApplications(),
+        if (_dashboardTab == 3) ..._buildAchievementCatalog(),
+      ],
     );
   }
 
@@ -561,45 +572,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final approved = myProjects
         .where((project) => project.statusAcc == 'approved')
         .length;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 24) / 3;
-        return Row(
+    return Card(
+      child: IntrinsicHeight(
+        child: Row(
           children: [
-            SizedBox(
-              width: cardWidth,
-              child: _OverviewMetricCard(
-                label: 'Pengajuan',
-                value: '${myProjects.length}',
-                icon: Icons.folder_open_rounded,
-                accent: const Color(0xFF476D73),
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: cardWidth,
-              child: _OverviewMetricCard(
-                label: 'Ditinjau',
-                value: '$underReview',
-                icon: Icons.hourglass_top_rounded,
-                accent: const Color(0xFFAA7135),
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: cardWidth,
-              child: _OverviewMetricCard(
-                label: 'Diterima',
-                value: '$approved',
-                icon: Icons.verified_outlined,
-                accent: const Color(0xFF39825A),
-              ),
-            ),
+            _OverviewMetric(label: 'Pengajuan', value: myProjects.length),
+            const VerticalDivider(indent: 14, endIndent: 14),
+            _OverviewMetric(label: 'Ditinjau', value: underReview),
+            const VerticalDivider(indent: 14, endIndent: 14),
+            _OverviewMetric(label: 'Diterima', value: approved),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
+
+  String get _firstName => _profile.name.trim().split(RegExp(r'\s+')).first;
 
   Widget _buildTeacherQueue() {
     final pendingProjects = _projects
@@ -610,36 +598,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         )
         .toList();
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-              sliver: SliverList.list(
-                children: [
-                  DashboardHeader(isTeacherView: true, onLogout: _logout),
-                  const SizedBox(height: 22),
-                  _buildTeacherWelcome(pendingProjects.length),
-                  const SizedBox(height: 20),
-                  if (pendingProjects.isEmpty)
-                    const _EmptyApprovalState()
-                  else
-                    ...pendingProjects.map(
-                      (project) => ApprovalRequestCard(
-                        project: project,
-                        onApprove: () =>
-                            _updateProjectStatus(project, 'approved'),
-                        onReject: () => _rejectProject(project),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+    return MenuPage(
+      header: _appHeader,
+      children: [
+        HeroBanner(
+          eyebrow: 'TINJAUAN PROYEK',
+          title: 'Antrean persetujuan',
+          subtitle: '${pendingProjects.length} draf menunggu tinjauan',
+          description: 'Tinjau ide dan bantu siswa menyempurnakan rencananya.',
+          icon: Icons.fact_check_outlined,
         ),
-      ),
+        const SizedBox(height: 24),
+        if (pendingProjects.isEmpty)
+          const _EmptyApprovalState()
+        else
+          ...pendingProjects.map(
+            (project) => ApprovalRequestCard(
+              project: project,
+              onApprove: () => _updateProjectStatus(project, 'approved'),
+              onReject: () => _rejectProject(project),
+            ),
+          ),
+      ],
     );
   }
 
@@ -651,28 +631,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const [_EmptyStudentSubmissionState()];
     }
     return [
-      Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEAF3F1),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.track_changes_rounded, color: ProjectNexusColors.teal),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Pantau status dan masukan guru untuk setiap pengajuanmu.',
-                style: TextStyle(
-                  color: ProjectNexusColors.ink,
-                  height: 1.4,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
-        ),
+      SectionTitle(
+        'Pengajuan proyekmu',
+        trailing: '${submissions.length} proyek',
+        subtitle: 'Pantau status dan masukan guru untuk setiap pengajuan.',
       ),
       const SizedBox(height: 14),
       ...submissions.map(
@@ -736,212 +698,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }).toList();
   }
 
-  Widget _buildStudentWelcome() {
-    final firstName = _profile.name.trim().split(RegExp(r'\s+')).first;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(23),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF102F35),
-            ProjectNexusColors.tealDark,
-            Color(0xFF176B68),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.tealDark.withValues(alpha: 0.18),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'RUANG KOLABORASI SISWA',
-                    style: TextStyle(
-                      color: Color(0xFFC9E9E2),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  'Halo, $firstName',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Temukan tim yang tepat.',
-                  style: const TextStyle(
-                    color: Color(0xFFE0F0EC),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                const Text(
-                  'Ide hebat tumbuh bersama keahlian yang beragam.',
-                  style: TextStyle(
-                    color: Color(0xFFD7E9E5),
-                    height: 1.45,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(23),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-            ),
-            child: const Icon(
-              Icons.groups_2_rounded,
-              color: Color(0xFFB9E2D8),
-              size: 36,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTeacherWelcome(int pendingCount) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [ProjectNexusColors.tealDark, Color(0xFF1A5556)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.tealDark.withValues(alpha: 0.13),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TINJAUAN PROYEK',
-                  style: TextStyle(
-                    color: Color(0xFFB9E2D8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Antrean persetujuan',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  'Tinjau ide dan bantu siswa menyempurnakan rencananya.',
-                  style: TextStyle(
-                    color: Color(0xFFD7E9E5),
-                    height: 1.4,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  '$pendingCount draf menunggu tinjauan',
-                  style: const TextStyle(
-                    color: Color(0xFFD7E9E5),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            constraints: const BoxConstraints(minWidth: 58, minHeight: 58),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$pendingCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'MENUNGGU',
-                  style: TextStyle(
-                    color: Color(0xFFD7E9E5),
-                    fontSize: 7,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   List<Widget> _buildProjectFeed() {
+    final recommendations = _visibleProjects;
     return [
       TextField(
         onChanged: (value) => setState(() => _searchQuery = value.trim()),
@@ -954,35 +712,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       SkillFilterList(
         selectedSkill: _selectedSkill,
         onSelected: (skill) => setState(() => _selectedSkill = skill),
+        beginnerOnly: _beginnerOnly,
+        onBeginnerOnlyChanged: (value) => setState(() => _beginnerOnly = value),
       ),
-      const SizedBox(height: 22),
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Rekrutmen terbuka',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(color: _ink, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${_visibleProjects.length} proyek',
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(color: const Color(0xFF627174)),
-          ),
-        ],
+      const SizedBox(height: 24),
+      SectionTitle(
+        'Rekrutmen terbuka',
+        trailing: '${recommendations.length} proyek',
+        subtitle: 'Diurutkan sesuai keahlian, minat, dan waktu luangmu.',
       ),
-      const SizedBox(height: 12),
-      if (_visibleProjects.isEmpty)
+      const SizedBox(height: 14),
+      if (recommendations.isEmpty)
         const _EmptySearchState()
       else
-        ..._visibleProjects.map(
-          (project) => ProjectCard(
-            project: project,
-            onDetails: () => _showProjectDetails(project),
+        ...recommendations.map(
+          (recommendation) => ProjectCard(
+            project: recommendation.project,
+            recommendationReason: recommendation.reason,
+            onDetails: () => _showProjectDetails(recommendation.project),
           ),
         ),
     ];
@@ -990,40 +737,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<Widget> _buildAchievementCatalog() {
     return [
-      Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: ProjectNexusColors.tealDark,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.emoji_events_outlined, color: Color(0xFFF1C36D)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Karya yang membanggakan',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Lihat perjalanan prestasi siswa sekolah.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.76),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+      const SectionTitle(
+        'Karya yang membanggakan',
+        subtitle: 'Perjalanan prestasi siswa sekolah.',
       ),
       const SizedBox(height: 14),
       ...schoolAchievements.map(AchievementCard.new),
@@ -1046,22 +762,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(project.description),
-            const SizedBox(height: 14),
-            Text('Ketua: ${project.leader}'),
-            Text('Target: ${project.event}'),
             Text(
-              '${widget.projectStore.acceptedMembers(project.id).length} anggota termasuk ketua',
+              project.description,
+              style: const TextStyle(color: ProjectNexusColors.muted),
             ),
-            Text(
-              project.recruitmentOpen
+            const SizedBox(height: 16),
+            _DetailLine(
+              icon: Icons.person_outline_rounded,
+              text: 'Ketua: ${project.leader}',
+            ),
+            _DetailLine(
+              icon: Icons.flag_outlined,
+              text: 'Target: ${project.event}',
+            ),
+            _DetailLine(
+              icon: Icons.stairs_outlined,
+              text: 'Tingkat proyek: ${project.difficulty.label}',
+            ),
+            _DetailLine(
+              icon: Icons.schedule_outlined,
+              text:
+                  'Komitmen waktu: sekitar ${project.weeklyHours} jam per minggu',
+            ),
+            _DetailLine(
+              icon: Icons.groups_2_outlined,
+              text:
+                  '${widget.projectStore.acceptedMembers(project.id).length} anggota termasuk ketua',
+            ),
+            _DetailLine(
+              icon: project.recruitmentOpen
+                  ? Icons.lock_open_rounded
+                  : Icons.lock_outline_rounded,
+              text: project.recruitmentOpen
                   ? 'Rekrutmen sedang terbuka.'
                   : 'Rekrutmen sedang ditutup.',
             ),
-            const SizedBox(height: 12),
+            if (project.difficulty == ProjectDifficulty.beginner) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: ProjectNexusColors.mint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'Proyek ini cocok untuk pemula. Kamu tidak harus menguasai semua keahlian sejak awal; tunjukkan minat dan kesiapan untuk belajar.',
+                  style: TextStyle(
+                    color: ProjectNexusColors.tealDark,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+            if (project.firstStep.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Langkah pertama',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                project.firstStep,
+                style: const TextStyle(color: ProjectNexusColors.muted),
+              ),
+            ],
+            const SizedBox(height: 16),
             const Text(
               'Keahlian yang dicari',
-              style: TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -1302,175 +1070,88 @@ class _StudentSubmissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, icon) = switch (project.statusAcc) {
-      'approved' => (
-        'Disetujui',
-        const Color(0xFF26734D),
-        Icons.check_circle_outline_rounded,
-      ),
-      'rejected' => (
-        'Perlu diperbaiki',
-        const Color(0xFFAD463D),
-        Icons.edit_note_rounded,
-      ),
-      _ => (
-        'Menunggu tinjauan',
-        const Color(0xFF9A572C),
-        Icons.hourglass_top_rounded,
-      ),
+    final (label, color) = switch (project.statusAcc) {
+      'approved' => ('Disetujui', ProjectNexusColors.success),
+      'rejected' => ('Perlu diperbaiki', ProjectNexusColors.error),
+      _ => ('Menunggu tinjauan', ProjectNexusColors.warning),
     };
     return Card(
       key: Key('student_submission_${project.title}'),
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: ProjectNexusColors.border),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            StatusPill(label: label, color: color),
+            const SizedBox(height: 12),
             Text(
               project.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: const TextStyle(
                 color: ProjectNexusColors.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              project.description,
+              style: const TextStyle(
+                color: ProjectNexusColors.muted,
+                fontSize: 13,
+                height: 1.45,
               ),
             ),
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.09),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: color, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
             Text(
-              project.description,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: const Color(0xFF526568), height: 1.45),
-            ),
-            const SizedBox(height: 13),
-            Container(
-              padding: const EdgeInsets.only(top: 12),
-              decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: ProjectNexusColors.border),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.school_outlined,
-                    size: 17,
-                    color: ProjectNexusColors.muted,
-                  ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Text(
-                      'Guru pendamping: ${project.teacherName}',
-                      style: const TextStyle(
-                        color: ProjectNexusColors.muted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
+              'Guru pendamping: ${project.teacherName}',
+              style: const TextStyle(
+                color: ProjectNexusColors.muted,
+                fontSize: 12,
               ),
             ),
             if (project.reviewNote != null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7F2),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFF0DCD2)),
+                  color: ProjectNexusColors.field,
+                  borderRadius: BorderRadius.circular(10),
+                  border: const Border(
+                    left: BorderSide(color: ProjectNexusColors.error, width: 3),
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          color: Color(0xFF9C5A44),
-                          size: 16,
-                        ),
-                        SizedBox(width: 7),
-                        Text(
-                          'MASUKAN GURU',
-                          style: TextStyle(
-                            color: Color(0xFF9C5A44),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.7,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      'Masukan guru: ${project.reviewNote}',
-                      style: const TextStyle(
-                        color: Color(0xFF70483D),
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Masukan guru: ${project.reviewNote}',
+                  style: const TextStyle(
+                    color: ProjectNexusColors.ink,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
                 ),
               ),
             ],
             if (onRevise != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                child: FilledButton(
                   key: Key('revise_submission_${project.title}'),
                   onPressed: onRevise,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Perbaiki dan kirim ulang'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: ProjectNexusColors.tealDark,
-                    side: const BorderSide(color: ProjectNexusColors.teal),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                  ),
+                  child: const Text('Perbaiki dan kirim ulang'),
                 ),
               ),
             ],
             if (onManageApplicants != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   key: Key('manage_applicants_${project.id}'),
                   onPressed: onManageApplicants,
-                  icon: const Icon(Icons.groups_2_outlined),
-                  label: Text(
+                  child: Text(
                     'Kelola pelamar (${project.recruitmentOpen ? 'rekrutmen terbuka' : 'rekrutmen ditutup'})',
                   ),
                 ),
@@ -1483,93 +1164,53 @@ class _StudentSubmissionCard extends StatelessWidget {
   }
 }
 
-class _EmptyStudentSubmissionState extends StatelessWidget {
-  const _EmptyStudentSubmissionState();
+class _OverviewMetric extends StatelessWidget {
+  const _OverviewMetric({required this.label, required this.value});
+
+  final String label;
+  final int value;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        children: [
-          Icon(Icons.inbox_outlined, size: 40, color: ProjectNexusColors.muted),
-          SizedBox(height: 12),
-          Text(
-            'Belum ada pengajuan proyek.',
-            style: TextStyle(color: ProjectNexusColors.muted),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Ajukan ide proyek untuk mulai mendapatkan tinjauan guru.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: ProjectNexusColors.muted),
-          ),
-        ],
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: ProjectNexusColors.ink,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: ProjectNexusColors.muted,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _OverviewMetricCard extends StatelessWidget {
-  const _OverviewMetricCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.accent,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color accent;
+class _EmptyStudentSubmissionState extends StatelessWidget {
+  const _EmptyStudentSubmissionState();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 94),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ProjectNexusColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: accent),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 20,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 1),
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: ProjectNexusColors.muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return const _EmptyDashboardState(
+      icon: Icons.inbox_outlined,
+      message: 'Belum ada pengajuan proyek.\nAjukan ide proyek untuk mendapatkan tinjauan guru.',
     );
   }
 }
@@ -1579,18 +1220,9 @@ class _EmptySearchState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 42),
-      child: Column(
-        children: [
-          Icon(Icons.search_off_rounded, size: 36, color: Color(0xFF849294)),
-          SizedBox(height: 10),
-          Text(
-            'Belum ada proyek yang cocok.',
-            style: TextStyle(color: Color(0xFF627174)),
-          ),
-        ],
-      ),
+    return const _EmptyDashboardState(
+      icon: Icons.search_off_rounded,
+      message: 'Belum ada proyek yang cocok.',
     );
   }
 }
@@ -1600,19 +1232,9 @@ class _EmptyApprovalState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
-      child: Column(
-        children: [
-          Icon(Icons.task_alt_rounded, size: 40, color: Color(0xFF087E8B)),
-          SizedBox(height: 12),
-          Text(
-            'Tidak ada draf yang menunggu persetujuan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF627174)),
-          ),
-        ],
-      ),
+    return const _EmptyDashboardState(
+      icon: Icons.task_alt_rounded,
+      message: 'Tidak ada draf yang menunggu persetujuan.',
     );
   }
 }
@@ -1622,30 +1244,35 @@ class _WorkspaceAccessState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.lock_outline_rounded,
-              size: 42,
-              color: ProjectNexusColors.teal,
+              size: 32,
+              color: ProjectNexusColors.muted,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 14),
             Text(
               'Workspace belum tersedia',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              style: TextStyle(
                 color: ProjectNexusColors.ink,
-                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 6),
-            const Text(
+            SizedBox(height: 6),
+            Text(
               'Akses diberikan kepada ketua, anggota yang diterima, dan guru pendamping setelah proyek disetujui.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: ProjectNexusColors.muted, height: 1.45),
+              style: TextStyle(
+                color: ProjectNexusColors.muted,
+                fontSize: 14,
+                height: 1.45,
+              ),
             ),
           ],
         ),
@@ -1663,15 +1290,19 @@ class _EmptyDashboardState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 42),
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
       child: Column(
         children: [
-          Icon(icon, size: 38, color: ProjectNexusColors.teal),
-          const SizedBox(height: 10),
+          Icon(icon, size: 32, color: ProjectNexusColors.muted),
+          const SizedBox(height: 12),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: ProjectNexusColors.muted),
+            style: const TextStyle(
+              color: ProjectNexusColors.muted,
+              fontSize: 14,
+              height: 1.45,
+            ),
           ),
         ],
       ),
@@ -1692,19 +1323,10 @@ class _StudentApplicationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (color, icon) = switch (application.status) {
-      ProjectApplicationStatus.pending => (
-        const Color(0xFF9A572C),
-        Icons.hourglass_top_rounded,
-      ),
-      ProjectApplicationStatus.accepted => (
-        const Color(0xFF26734D),
-        Icons.check_circle_outline_rounded,
-      ),
-      ProjectApplicationStatus.rejected => (
-        const Color(0xFFAD463D),
-        Icons.cancel_outlined,
-      ),
+    final color = switch (application.status) {
+      ProjectApplicationStatus.pending => ProjectNexusColors.warning,
+      ProjectApplicationStatus.accepted => ProjectNexusColors.success,
+      ProjectApplicationStatus.rejected => ProjectNexusColors.error,
     };
     return Card(
       key: Key('student_application_${application.id}'),
@@ -1714,43 +1336,67 @@ class _StudentApplicationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              project.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: ProjectNexusColors.ink,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 9),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 18),
-                const SizedBox(width: 7),
-                Text(
-                  application.status.label,
-                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                Expanded(
+                  child: Text(
+                    project.title,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 10),
+                StatusPill(label: application.status.label, color: color),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             Text(
               'Ketua proyek: ${project.leader}',
-              style: const TextStyle(color: ProjectNexusColors.muted),
+              style: const TextStyle(
+                color: ProjectNexusColors.muted,
+                fontSize: 13,
+              ),
             ),
             if (onOpenWorkspace != null) ...[
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.tonalIcon(
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
                   key: const Key('open_application_workspace'),
                   onPressed: onOpenWorkspace,
-                  icon: const Icon(Icons.view_kanban_outlined),
-                  label: const Text('Buka workspace'),
+                  child: const Text('Buka workspace'),
                 ),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  const _DetailLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: ProjectNexusColors.muted),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
+        ],
       ),
     );
   }

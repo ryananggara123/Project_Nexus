@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../models/portfolio_item.dart';
+import '../widgets/dashboard_header.dart';
+import '../widgets/project_card.dart';
 
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({
+    required this.header,
     required this.role,
     required this.studentName,
     required this.items,
@@ -13,6 +16,7 @@ class PortfolioScreen extends StatelessWidget {
     super.key,
   });
 
+  final Widget header;
   final UserRole role;
   final String studentName;
   final List<PortfolioItem> items;
@@ -26,84 +30,69 @@ class PortfolioScreen extends StatelessWidget {
         ? items
         : items.where((item) => item.owner == studentName).toList();
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              sliver: SliverList.list(
-                children: [
-                  _buildHero(context, visibleItems.length),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _isTeacher ? 'Karya siswa' : 'Karya saya',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: ProjectNexusColors.ink,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ),
-                      if (!_isTeacher)
-                        FilledButton.icon(
-                          key: const Key('portfolio_add_item'),
-                          onPressed: () => _showAddItemDialog(context),
-                          icon: const Icon(Icons.add_rounded, size: 19),
-                          label: const Text('Tambah karya'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _isTeacher
-                        ? 'Jelajahi contoh karya dan pencapaian siswa.'
-                        : 'Kumpulan proyek dan pencapaian yang bisa dilihat tim.',
-                    style: const TextStyle(
-                      color: ProjectNexusColors.muted,
-                      height: 1.45,
+    return MenuPage(
+      header: header,
+      maxWidth: 900,
+      children: [
+        HeroBanner(
+          eyebrow: _isTeacher ? 'GALERI SEKOLAH' : 'PORTOFOLIO DIGITAL',
+          title: _isTeacher
+              ? 'Karya yang menginspirasi.'
+              : 'Tunjukkan hasil karyamu.',
+          description: _isTeacher
+              ? '${visibleItems.length} karya dari siswa ProjectNexus.'
+              : '${visibleItems.length} karya tersimpan di portofoliomu.',
+          icon: _isTeacher
+              ? Icons.auto_awesome_rounded
+              : Icons.collections_bookmark_rounded,
+        ),
+        const SizedBox(height: 24),
+        SectionTitle(
+          _isTeacher ? 'Karya siswa' : 'Karya saya',
+          subtitle: _isTeacher
+              ? 'Portofolio membantu guru mengenali potensi dan minat setiap siswa.'
+              : 'Tugas yang selesai di Workspace otomatis tercatat sebagai kontribusi.',
+          action: _isTeacher
+              ? null
+              : FilledButton.icon(
+                  key: const Key('portfolio_add_item'),
+                  onPressed: () => _showAddItemDialog(context),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Tambah karya'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  if (visibleItems.isEmpty)
-                    const _EmptyPortfolio()
-                  else
-                    _buildPortfolioCollection(visibleItems),
-                  const SizedBox(height: 8),
-                  _buildPortfolioNote(),
-                ],
-              ),
-            ),
-          ],
+                ),
         ),
-      ),
+        const SizedBox(height: 14),
+        if (visibleItems.isEmpty)
+          const _EmptyPortfolio()
+        else
+          _buildPortfolioCollection(visibleItems),
+      ],
     );
   }
 
   Widget _buildPortfolioCollection(List<PortfolioItem> visibleItems) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 680 ? 2 : 1;
-        if (columns == 1) {
+        if (constraints.maxWidth < 680) {
           return Column(
             children: visibleItems
                 .map(
-                  (item) => _PortfolioCard(
-                    item: item,
-                    showOwner: _isTeacher,
-                  ),
+                  (item) => _PortfolioCard(item: item, showOwner: _isTeacher),
                 )
                 .toList(),
           );
         }
-        final cardWidth = (constraints.maxWidth - 14) / 2;
+        final cardWidth = (constraints.maxWidth - 12) / 2;
         return Wrap(
-          spacing: 14,
-          runSpacing: 14,
+          spacing: 12,
           children: visibleItems
               .map(
                 (item) => SizedBox(
@@ -117,106 +106,10 @@ class PortfolioScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHero(BuildContext context, int itemCount) {
-    return Container(
-      padding: const EdgeInsets.all(21),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [ProjectNexusColors.tealDark, Color(0xFF176B68)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isTeacher ? 'GALERI SEKOLAH' : 'PORTOFOLIO DIGITAL',
-                  style: const TextStyle(
-                    color: Color(0xFFC9E9E2),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _isTeacher ? 'Karya yang menginspirasi.' : 'Tunjukkan hasil karyamu.',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  _isTeacher
-                      ? '$itemCount karya dari siswa ProjectNexus'
-                      : '$itemCount karya tersimpan di portofoliomu',
-                  style: const TextStyle(
-                    color: Color(0xFFD7E9E5),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Icon(
-            _isTeacher
-                ? Icons.auto_awesome_rounded
-                : Icons.collections_bookmark_rounded,
-            color: const Color(0xFFF1C36D),
-            size: 43,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPortfolioNote() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ProjectNexusColors.mint,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.lightbulb_outline_rounded,
-            size: 19,
-            color: ProjectNexusColors.teal,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              _isTeacher
-                  ? 'Portofolio membantu guru mengenali potensi dan minat setiap siswa.'
-                  : 'Lengkapi portofolio dengan karya nyata agar ketua proyek dapat mengenal keahlianmu.',
-              style: const TextStyle(
-                color: ProjectNexusColors.tealDark,
-                fontSize: 11,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _showAddItemDialog(BuildContext context) async {
     final item = await showDialog<PortfolioItem>(
       context: context,
-      builder: (context) => _AddPortfolioItemDialog(
-        studentName: studentName,
-      ),
+      builder: (context) => _AddPortfolioItemDialog(studentName: studentName),
     );
     if (item != null) onAddItem(item);
   }
@@ -232,34 +125,21 @@ class _PortfolioCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: ProjectNexusColors.border),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 54,
-              height: 54,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    item.color.withValues(alpha: 0.18),
-                    item.color.withValues(alpha: 0.07),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
+                color: item.color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(item.icon, color: item.color, size: 25),
+              child: Icon(item.icon, color: item.color, size: 22),
             ),
-            const SizedBox(width: 13),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,36 +149,42 @@ class _PortfolioCard extends StatelessWidget {
                       item.owner,
                       style: const TextStyle(
                         color: ProjectNexusColors.teal,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                   ],
                   Text(
                     item.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: const TextStyle(
                       color: ProjectNexusColors.ink,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   Text(
                     item.description,
                     style: const TextStyle(
                       color: ProjectNexusColors.muted,
-                      fontSize: 12,
+                      fontSize: 13,
                       height: 1.45,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
-                    spacing: 7,
+                    spacing: 6,
                     runSpacing: 6,
                     children: [
-                      _PortfolioTag(item.category),
-                      _PortfolioTag(item.year),
+                      if (item.isContribution)
+                        const StatusPill(
+                          label: 'Kontribusi tim',
+                          color: ProjectNexusColors.teal,
+                        ),
+                      SkillTag(item.category),
+                      SkillTag(item.year),
                     ],
                   ),
                 ],
@@ -311,49 +197,24 @@ class _PortfolioCard extends StatelessWidget {
   }
 }
 
-class _PortfolioTag extends StatelessWidget {
-  const _PortfolioTag(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F4F3),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: ProjectNexusColors.muted,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
 class _EmptyPortfolio extends StatelessWidget {
   const _EmptyPortfolio();
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 32),
+      padding: EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
           Icon(
             Icons.collections_bookmark_outlined,
-            size: 40,
-            color: ProjectNexusColors.teal,
+            size: 32,
+            color: ProjectNexusColors.muted,
           ),
-          SizedBox(height: 10),
+          SizedBox(height: 12),
           Text(
             'Belum ada karya di portofolio.',
-            style: TextStyle(color: ProjectNexusColors.muted),
+            style: TextStyle(color: ProjectNexusColors.muted, fontSize: 14),
           ),
         ],
       ),

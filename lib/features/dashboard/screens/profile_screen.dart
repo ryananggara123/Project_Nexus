@@ -2,268 +2,137 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
 import '../models/profile_data.dart';
+import '../widgets/dashboard_header.dart';
+import '../widgets/project_card.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({
+    required this.header,
     required this.profile,
     required this.onProfileChanged,
     super.key,
   });
 
+  final Widget header;
   final ProfileData profile;
   final ValueChanged<ProfileData> onProfileChanged;
 
+  bool get _isStudentProfile => profile.roleLabel.startsWith('Siswa');
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
-              sliver: SliverList.list(
-                children: [
-                  Text(
-                    'AKUN & IDENTITAS',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: ProjectNexusColors.teal,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Profil',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: ProjectNexusColors.ink,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 17),
-                  _buildHeader(context),
-                  const SizedBox(height: 14),
-                  _buildAboutCard(context),
-                  const SizedBox(height: 14),
-                  _buildSkillsCard(context),
-                  const SizedBox(height: 14),
-                  _buildContactCard(context),
-                  const SizedBox(height: 15),
-                  const Text(
-                    'Profil contoh untuk pratinjau. Perubahan tersimpan selama aplikasi berjalan.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: ProjectNexusColors.muted,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+    return MenuPage(
+      header: header,
+      children: [
+        HeroBanner(
+          eyebrow: 'PROFIL PENGGUNA',
+          title: profile.name,
+          subtitle: profile.roleLabel,
+          description: profile.institution,
+          leading: CircleAvatar(
+            radius: 34,
+            backgroundColor: Colors.white,
+            child: Text(
+              _initials(profile.name),
+              style: const TextStyle(
+                color: ProjectNexusColors.tealDark,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(21),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF102F35),
-            ProjectNexusColors.tealDark,
-            Color(0xFF176B68),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.tealDark.withValues(alpha: 0.14),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.account_circle_outlined,
-                color: Color(0xFFC9E9E2),
-                size: 22,
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'PROFIL PENGGUNA',
-                  style: TextStyle(
-                    color: Color(0xFFC9E9E2),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-              IconButton(
-                key: const Key('profile_edit'),
-                tooltip: 'Edit profil',
-                onPressed: () => _showEditDialog(context),
-                icon: const Icon(Icons.edit_outlined, color: Colors.white),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.14),
-                ),
-              ),
-            ],
+          trailing: IconButton(
+            key: const Key('profile_edit'),
+            tooltip: 'Edit profil',
+            onPressed: () => _showEditDialog(context),
+            icon: const Icon(Icons.edit_outlined, color: Colors.white),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.14),
+            ),
           ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
+        ),
+        const SizedBox(height: 16),
+        _ProfileSection(
+          title: 'Tentang',
+          child: Text(
+            profile.bio,
+            style: const TextStyle(
+              color: ProjectNexusColors.muted,
+              height: 1.55,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        _ProfileSection(
+          title: 'Keahlian',
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: profile.skills.map(SkillTag.new).toList(),
+          ),
+        ),
+        if (_isStudentProfile)
+          _ProfileSection(
+            title: 'Preferensi rekomendasi',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 37,
-                  backgroundColor: const Color(0xFFE5F3F1),
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      _initials(profile.name),
-                      style: const TextStyle(
-                        color: ProjectNexusColors.tealDark,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                const Text(
+                  'Minat',
+                  style: TextStyle(
+                    color: ProjectNexusColors.muted,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: profile.interests
+                      .map(
+                        (interest) => StatusPill(
+                          label: interest,
+                          color: ProjectNexusColors.teal,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        profile.roleLabel,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFFD7E9E5),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Waktu luang: ${profile.weeklyAvailableHours} jam per minggu',
+                  style: const TextStyle(
+                    color: ProjectNexusColors.ink,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 17),
-          Row(
+        _ProfileSection(
+          title: 'Informasi kontak',
+          child: Column(
             children: [
-              const Icon(
-                Icons.school_outlined,
-                color: Color(0xFFC9E9E2),
-                size: 17,
+              _ContactRow(
+                icon: Icons.email_outlined,
+                label: 'Email',
+                value: profile.email,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  profile.institution,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              const SizedBox(height: 12),
+              _ContactRow(
+                icon: Icons.location_on_outlined,
+                label: 'Institusi',
+                value: profile.institution,
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAboutCard(BuildContext context) {
-    return _ProfileSection(
-      icon: Icons.person_outline_rounded,
-      title: 'Tentang',
-      child: Text(
-        profile.bio,
-        style: const TextStyle(
-          color: ProjectNexusColors.muted,
-          height: 1.55,
-          fontSize: 13,
         ),
-      ),
-    );
-  }
-
-  Widget _buildSkillsCard(BuildContext context) {
-    return _ProfileSection(
-      icon: Icons.auto_awesome_outlined,
-      title: 'Keahlian',
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: profile.skills
-            .map(
-              (skill) => Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: ProjectNexusColors.mint,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  skill,
-                  style: const TextStyle(
-                    color: ProjectNexusColors.tealDark,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildContactCard(BuildContext context) {
-    return _ProfileSection(
-      icon: Icons.contact_mail_outlined,
-      title: 'Informasi kontak',
-      child: Column(
-        children: [
-          _ContactRow(
-            icon: Icons.email_outlined,
-            label: 'Email',
-            value: profile.email,
-          ),
-          const SizedBox(height: 12),
-          _ContactRow(
-            icon: Icons.location_on_outlined,
-            label: 'Institusi',
-            value: profile.institution,
-          ),
-        ],
-      ),
+        const SizedBox(height: 4),
+        const Text(
+          'Profil contoh untuk pratinjau. Perubahan tersimpan selama aplikasi berjalan.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: ProjectNexusColors.muted, fontSize: 12),
+        ),
+      ],
     );
   }
 
@@ -277,6 +146,7 @@ class ProfileScreen extends StatelessWidget {
 
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.first.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
         .toUpperCase();
@@ -284,52 +154,35 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _ProfileSection extends StatelessWidget {
-  const _ProfileSection({
-    required this.icon,
-    required this.title,
-    required this.child,
-  });
+  const _ProfileSection({required this.title, required this.child});
 
-  final IconData icon;
   final String title;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(19),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(21),
-        border: Border.all(color: ProjectNexusColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.ink.withValues(alpha: 0.025),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: ProjectNexusColors.teal, size: 19),
-              const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
                   color: ProjectNexusColors.ink,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(height: 12),
+              child,
             ],
           ),
-          const SizedBox(height: 13),
-          child,
-        ],
+        ),
       ),
     );
   }
@@ -358,7 +211,7 @@ class _ContactRow extends StatelessWidget {
             label,
             style: const TextStyle(
               color: ProjectNexusColors.muted,
-              fontSize: 12,
+              fontSize: 13,
             ),
           ),
         ),
@@ -367,8 +220,8 @@ class _ContactRow extends StatelessWidget {
             value,
             style: const TextStyle(
               color: ProjectNexusColors.ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -391,6 +244,11 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _institutionController;
   late final TextEditingController _bioController;
+  late final Set<String> _selectedSkills;
+  late final Set<String> _selectedInterests;
+  late int _weeklyAvailableHours;
+
+  bool get _isStudentProfile => widget.profile.roleLabel.startsWith('Siswa');
 
   @override
   void initState() {
@@ -400,6 +258,9 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       text: widget.profile.institution,
     );
     _bioController = TextEditingController(text: widget.profile.bio);
+    _selectedSkills = {...widget.profile.skills};
+    _selectedInterests = {...widget.profile.interests};
+    _weeklyAvailableHours = widget.profile.weeklyAvailableHours;
   }
 
   @override
@@ -445,6 +306,90 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 ),
                 validator: _required,
               ),
+              if (_isStudentProfile) ...[
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Keahlian yang sudah kamu miliki',
+                    style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 0,
+                  children: availableStudentSkills.map((skill) {
+                    return FilterChip(
+                      key: Key('profile_skill_$skill'),
+                      label: Text(skill),
+                      selected: _selectedSkills.contains(skill),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedSkills.add(skill);
+                          } else {
+                            _selectedSkills.remove(skill);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Topik yang kamu minati',
+                    style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 0,
+                  children: availableStudentInterests.map((interest) {
+                    return FilterChip(
+                      key: Key('profile_interest_$interest'),
+                      label: Text(interest),
+                      selected: _selectedInterests.contains(interest),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedInterests.add(interest);
+                          } else {
+                            _selectedInterests.remove(interest);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  key: const Key('profile_weekly_hours'),
+                  initialValue: _weeklyAvailableHours,
+                  decoration: const InputDecoration(
+                    labelText: 'Waktu luang per minggu',
+                    prefixIcon: Icon(Icons.schedule_outlined),
+                  ),
+                  items: availableWeeklyHours
+                      .map(
+                        (hours) => DropdownMenuItem(
+                          value: hours,
+                          child: Text('$hours jam per minggu'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (hours) {
+                    if (hours != null) {
+                      setState(() => _weeklyAvailableHours = hours);
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -463,6 +408,13 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 name: _nameController.text.trim(),
                 institution: _institutionController.text.trim(),
                 bio: _bioController.text.trim(),
+                skills: _isStudentProfile ? _selectedSkills.toList() : null,
+                interests: _isStudentProfile
+                    ? _selectedInterests.toList()
+                    : null,
+                weeklyAvailableHours: _isStudentProfile
+                    ? _weeklyAvailableHours
+                    : null,
               ),
             );
           },

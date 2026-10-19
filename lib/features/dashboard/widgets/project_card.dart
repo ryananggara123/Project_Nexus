@@ -1,119 +1,170 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
 
 class ProjectCard extends StatelessWidget {
   const ProjectCard({
     required this.project,
     required this.onDetails,
+    this.recommendationReason,
     super.key,
   });
 
   final ProjectListing project;
   final VoidCallback onDetails;
+  final String? recommendationReason;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white,
-      elevation: 1,
-      shadowColor: const Color(0xFF172A2D).withValues(alpha: 0.04),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xFFE4EAE9)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 19,
-                  backgroundColor: const Color(0xFFD6ECEB),
-                  child: Text(
-                    project.leader.substring(0, 1),
-                    style: const TextStyle(
-                      color: Color(0xFF087E8B),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        project.leader,
-                        style: const TextStyle(
-                          color: Color(0xFF172A2D),
-                          fontWeight: FontWeight.w700,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onDetails,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        PersonAvatar(project.leader, radius: 14),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${project.leader} · ${project.event}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: ProjectNexusColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      project.title,
+                      style: const TextStyle(
+                        color: ProjectNexusColors.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      project.description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: ProjectNexusColors.muted,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                    if (recommendationReason != null) ...[
+                      const SizedBox(height: 10),
                       Text(
-                        project.event,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        recommendationReason!,
                         style: const TextStyle(
-                          color: Color(0xFF718083),
+                          color: ProjectNexusColors.teal,
                           fontSize: 12,
+                          height: 1.4,
                         ),
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (project.difficulty == ProjectDifficulty.beginner)
+                          const _BeginnerBadge(),
+                        ...project.skills.map(SkillTag.new),
+                      ],
+                    ),
+                  ],
                 ),
-                const _OpenBadge(),
-              ],
-            ),
-            const SizedBox(height: 17),
-            Text(
-              project.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: const Color(0xFF172A2D),
-                fontWeight: FontWeight.w800,
-                height: 1.2,
               ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              project.description,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: const Color(0xFF627174), height: 1.45),
-            ),
-            const SizedBox(height: 13),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: project.skills.map(SkillTag.new).toList(),
-            ),
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: Color(0xFFE8EFEE)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(
-                  Icons.verified_rounded,
-                  size: 16,
-                  color: Color(0xFF087E8B),
-                ),
-                const SizedBox(width: 5),
-                const Expanded(
-                  child: Text(
-                    'Disetujui guru pendamping',
-                    style: TextStyle(
-                      color: Color(0xFF526568),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.schedule_outlined,
+                    size: 15,
+                    color: ProjectNexusColors.muted,
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      '± ${project.weeklyHours} jam/minggu',
+                      style: const TextStyle(
+                        color: ProjectNexusColors.muted,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ),
-                TextButton(onPressed: onDetails, child: const Text('Detail')),
-              ],
-            ),
-          ],
+                  TextButton(onPressed: onDetails, child: const Text('Detail')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Avatar lingkaran berisi huruf pertama nama.
+class PersonAvatar extends StatelessWidget {
+  const PersonAvatar(this.name, {this.radius = 18, super.key});
+
+  final String name;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = name.trim();
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: ProjectNexusColors.mint,
+      child: Text(
+        trimmed.isEmpty ? '?' : trimmed[0].toUpperCase(),
+        style: TextStyle(
+          color: ProjectNexusColors.tealDark,
+          fontSize: radius * 0.85,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _BeginnerBadge extends StatelessWidget {
+  const _BeginnerBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: ProjectNexusColors.mint,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Text(
+        'Ramah pemula',
+        style: TextStyle(
+          color: ProjectNexusColors.tealDark,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -128,41 +179,44 @@ class SkillTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4F3),
-        borderRadius: BorderRadius.circular(20),
+        color: ProjectNexusColors.field,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: Color(0xFF42585B),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+          color: ProjectNexusColors.ink,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
 }
 
-class _OpenBadge extends StatelessWidget {
-  const _OpenBadge();
+/// Label status kecil berwarna (Disetujui, Menunggu, dsb).
+class StatusPill extends StatelessWidget {
+  const StatusPill({required this.label, required this.color, super.key});
+
+  final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE3F3EB),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: const Text(
-        'OPEN',
+      child: Text(
+        label,
         style: TextStyle(
-          color: Color(0xFF287A4B),
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.4,
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
+import '../models/contribution_recognition.dart';
 import '../models/dashboard_models.dart';
 import '../models/workspace_task.dart';
+import '../widgets/dashboard_header.dart';
+import '../widgets/project_card.dart';
 
 class WorkspaceScreen extends StatelessWidget {
   const WorkspaceScreen({
+    required this.header,
     required this.availableProjects,
     required this.selectedProjectId,
     required this.onProjectChanged,
@@ -18,6 +22,7 @@ class WorkspaceScreen extends StatelessWidget {
     super.key,
   });
 
+  final Widget header;
   final List<ProjectListing> availableProjects;
   final String selectedProjectId;
   final ValueChanged<String> onProjectChanged;
@@ -36,320 +41,71 @@ class WorkspaceScreen extends StatelessWidget {
         .length;
     final progress = tasks.isEmpty ? 0.0 : completedCount / tasks.length;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1020),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isTeacherView ? 'PANEL PEMBIMBING' : 'RUANG KOLABORASI',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: ProjectNexusColors.teal,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                              ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Workspace',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: ProjectNexusColors.ink,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(11),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: ProjectNexusColors.border),
-                    ),
-                    child: const Icon(
-                      Icons.groups_2_outlined,
-                      color: ProjectNexusColors.teal,
-                    ),
-                  ),
-                ],
-              ),
-              if (availableProjects.length > 1) ...[
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  key: const Key('workspace_project_selector'),
-                  initialValue: selectedProjectId,
-                  decoration: const InputDecoration(
-                    labelText: 'Pilih proyek',
-                    prefixIcon: Icon(Icons.folder_open_rounded),
-                  ),
-                  items: availableProjects
-                      .map(
-                        (project) => DropdownMenuItem(
-                          value: project.id,
-                          child: Text(
-                            project.title,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (projectId) {
-                    if (projectId != null) onProjectChanged(projectId);
-                  },
-                ),
-              ],
-              const SizedBox(height: 18),
-              _buildHero(context, completedCount, progress),
-              const SizedBox(height: 18),
-              _buildProjectSummary(),
-              const SizedBox(height: 18),
-              _buildSectionTitle(
-                context,
-                'Anggota tim',
-                '${members.length} orang',
-              ),
-              const SizedBox(height: 10),
-              _buildTeamMembers(),
-              const SizedBox(height: 24),
-              _buildSectionTitle(
-                context,
-                'Papan tugas',
-                '${tasks.length} tugas',
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                'Pilih menu pada kartu untuk memindahkan tugas ke tahap berikutnya.',
-                style: TextStyle(
-                  color: ProjectNexusColors.muted,
-                  fontSize: 12,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _buildBoard(context),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showAddTaskDialog(context),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Tambah tugas'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: ProjectNexusColors.tealDark,
-                    side: const BorderSide(color: ProjectNexusColors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHero(BuildContext context, int completedCount, double progress) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(21),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF102F35), ProjectNexusColors.tealDark, Color(0xFF176B68)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.tealDark.withValues(alpha: 0.14),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.view_kanban_rounded,
-                  color: Color(0xFFB9E2D8),
-                  size: 21,
-                ),
-              ),
-              const SizedBox(width: 11),
-              Text(
-                isTeacherView ? 'RUANG KERJA GURU' : 'RUANG KERJA TIM',
-                style: const TextStyle(
-                  color: Color(0xFFC9E9E2),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            projectTitle,
-            style: Theme.of(context).textTheme.headlineSmall
-                ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            isTeacherView
-                ? 'Pantau pembagian tugas dan progres tim bimbingan.'
-                : 'Atur pekerjaan bersama dan wujudkan ide jadi karya.',
-            style: const TextStyle(
-              color: Color(0xFFD7E9E5),
-              height: 1.45,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: Colors.white.withValues(alpha: 0.18),
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFFF1C36D)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${(progress * 100).round()}%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 7),
-          Text(
-            '$completedCount dari ${tasks.length} tugas selesai',
-            style: const TextStyle(
-              color: Color(0xFFD7E9E5),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProjectSummary() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: ProjectNexusColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: ProjectNexusColors.mint,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.water_drop_outlined,
-              color: ProjectNexusColors.teal,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'PROYEK AKTIF',
-                  style: TextStyle(
-                    color: ProjectNexusColors.muted,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Aplikasi Pemantau Kualitas Air IoT',
-                  style: TextStyle(
-                    color: ProjectNexusColors.ink,
-                    fontWeight: FontWeight.w800,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(
-            Icons.verified_rounded,
-            color: ProjectNexusColors.teal,
-            size: 20,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(
-    BuildContext context,
-    String title,
-    String trailing,
-  ) {
-    return Row(
+    return MenuPage(
+      header: header,
+      maxWidth: 1020,
+      lazy: false,
       children: [
-        Expanded(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: ProjectNexusColors.ink,
-              fontWeight: FontWeight.w800,
-            ),
+        HeroBanner(
+          eyebrow: isTeacherView ? 'PANEL PEMBIMBING' : 'RUANG KERJA TIM',
+          title: projectTitle,
+          description: isTeacherView
+              ? 'Pantau pembagian tugas dan progres tim bimbingan.'
+              : 'Atur pekerjaan bersama dan wujudkan ide jadi karya.',
+          icon: Icons.view_kanban_rounded,
+          bottom: _HeroProgress(
+            progress: progress,
+            label: '$completedCount dari ${tasks.length} tugas selesai',
           ),
         ),
-        Text(
-          trailing,
-          style: const TextStyle(
-            color: ProjectNexusColors.muted,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+        if (availableProjects.length > 1) ...[
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            key: const Key('workspace_project_selector'),
+            initialValue: selectedProjectId,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Pilih proyek',
+              prefixIcon: Icon(Icons.folder_open_rounded, size: 20),
+            ),
+            items: availableProjects
+                .map(
+                  (project) => DropdownMenuItem(
+                    value: project.id,
+                    child: Text(project.title, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: (projectId) {
+              if (projectId != null) onProjectChanged(projectId);
+            },
           ),
+        ],
+        const SizedBox(height: 24),
+        SectionTitle('Anggota tim', trailing: '${members.length} orang'),
+        const SizedBox(height: 12),
+        _buildTeamMembers(),
+        const SizedBox(height: 28),
+        const SectionTitle(
+          'Apresiasi kontribusi',
+          trailing: 'Dari tugas selesai',
+          subtitle: 'Setiap anggota berkembang dengan langkahnya sendiri. Lencana diberikan dari tugas yang sudah ditandai selesai.',
+        ),
+        const SizedBox(height: 12),
+        _buildContributionRecognition(),
+        const SizedBox(height: 28),
+        SectionTitle(
+          'Papan tugas',
+          trailing: '${tasks.length} tugas',
+          subtitle: 'Pilih menu pada kartu untuk memindahkan tugas ke tahap berikutnya.',
+        ),
+        const SizedBox(height: 12),
+        _buildBoard(context),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => _showAddTaskDialog(context),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Tambah tugas'),
         ),
       ],
     );
@@ -360,34 +116,19 @@ class WorkspaceScreen extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: members.map((member) {
-          final isTeacher = member.$2 == 'Guru pendamping';
           return Container(
-            width: 150,
-            margin: const EdgeInsets.only(right: 9),
+            width: 168,
+            margin: const EdgeInsets.only(right: 10),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(17),
+              color: ProjectNexusColors.surface,
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: ProjectNexusColors.border),
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: isTeacher
-                      ? const Color(0xFFFFF2E5)
-                      : ProjectNexusColors.mint,
-                  child: Text(
-                    member.$1.substring(0, 1),
-                    style: TextStyle(
-                      color: isTeacher
-                          ? const Color(0xFF9A572C)
-                          : ProjectNexusColors.teal,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 9),
+                PersonAvatar(member.$1, radius: 18),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,18 +139,18 @@ class WorkspaceScreen extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: ProjectNexusColors.ink,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         member.$2,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: ProjectNexusColors.muted,
-                          fontSize: 9,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -420,6 +161,117 @@ class WorkspaceScreen extends StatelessWidget {
           );
         }).toList(),
       ),
+    );
+  }
+
+  Widget _buildContributionRecognition() {
+    final studentMembers = members
+        .where((member) => member.$2 != 'Guru pendamping')
+        .map((member) => member.$1);
+    final contributions = ContributionRecognition.summarize(
+      memberNames: studentMembers,
+      tasks: tasks,
+    );
+
+    return Column(
+      children: contributions.map((contribution) {
+        return Card(
+          key: Key('member_contribution_${contribution.memberName}'),
+          margin: const EdgeInsets.only(bottom: 10),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    PersonAvatar(contribution.memberName, radius: 16),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        contribution.memberName,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.ink,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${contribution.completedTaskCount}/${contribution.assignedTaskCount} selesai',
+                      style: const TextStyle(
+                        color: ProjectNexusColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: contribution.progress,
+                    minHeight: 6,
+                    backgroundColor: ProjectNexusColors.field,
+                    valueColor: const AlwaysStoppedAnimation(
+                      ProjectNexusColors.teal,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (contribution.badges.isEmpty)
+                  const Text(
+                    'Mulai dari satu tugas kecil. Progresmu akan tercatat di sini.',
+                    style: TextStyle(
+                      color: ProjectNexusColors.muted,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: contribution.badges.map((badge) {
+                      return Tooltip(
+                        message: badge.description,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3D5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.emoji_events_rounded,
+                                size: 14,
+                                color: Color(0xFF8C641C),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                badge.title,
+                                style: const TextStyle(
+                                  color: Color(0xFF755315),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -458,9 +310,63 @@ class WorkspaceScreen extends StatelessWidget {
   Future<void> _showAddTaskDialog(BuildContext context) async {
     final task = await showDialog<WorkspaceTask>(
       context: context,
-      builder: (context) => const _AddWorkspaceTaskDialog(),
+      builder: (context) => _AddWorkspaceTaskDialog(
+        assignees: members
+            .where((member) => member.$2 != 'Guru pendamping')
+            .map((member) => member.$1)
+            .toList(),
+      ),
     );
     if (task != null) onAddTask(task);
+  }
+}
+
+class _HeroProgress extends StatelessWidget {
+  const _HeroProgress({required this.progress, required this.label});
+
+  final double progress;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFFF1C36D)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '${(progress * 100).round()}%',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: HeroBanner.onHeroMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -479,70 +385,69 @@ class _TaskColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      WorkspaceTaskStatus.todo => const Color(0xFF77878A),
-      WorkspaceTaskStatus.inProgress => const Color(0xFF087E8B),
-      WorkspaceTaskStatus.done => const Color(0xFF39825A),
+      WorkspaceTaskStatus.todo => ProjectNexusColors.muted,
+      WorkspaceTaskStatus.inProgress => ProjectNexusColors.teal,
+      WorkspaceTaskStatus.done => ProjectNexusColors.success,
     };
 
     return Container(
       key: ValueKey('workspace_column_${status.name}'),
-      width: 270,
+      width: 272,
       margin: const EdgeInsets.only(right: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE9EFEE),
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: const Color(0xFFDDE6E4)),
+        color: const Color(0xFFEDF1F1),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  status.label,
-                  style: const TextStyle(
-                    color: ProjectNexusColors.ink,
-                    fontWeight: FontWeight.w800,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    status.label,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                child: Text(
+                Text(
                   '${tasks.length}',
                   style: const TextStyle(
                     color: ProjectNexusColors.muted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           if (tasks.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFDCE3E3)),
               ),
               child: const Text(
                 'Belum ada tugas di tahap ini.',
-                style: TextStyle(color: ProjectNexusColors.muted, fontSize: 11),
+                style: TextStyle(color: ProjectNexusColors.muted, fontSize: 12),
               ),
             )
           else
@@ -568,19 +473,12 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 9),
-      padding: const EdgeInsets.all(13),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        color: ProjectNexusColors.surface,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: ProjectNexusColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.ink.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -589,13 +487,16 @@ class _TaskCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  task.title,
-                  style: const TextStyle(
-                    color: ProjectNexusColors.ink,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    height: 1.35,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    task.title,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.ink,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
                   ),
                 ),
               ),
@@ -618,15 +519,11 @@ class _TaskCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(
-                Icons.person_outline_rounded,
-                size: 15,
-                color: ProjectNexusColors.muted,
-              ),
-              const SizedBox(width: 5),
+              PersonAvatar(task.assignee, radius: 10),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   task.assignee,
@@ -634,7 +531,7 @@ class _TaskCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: ProjectNexusColors.muted,
-                    fontSize: 11,
+                    fontSize: 12,
                   ),
                 ),
               ),
@@ -643,17 +540,24 @@ class _TaskCard extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(
-                Icons.calendar_today_outlined,
-                size: 13,
-                color: ProjectNexusColors.muted,
+              const SizedBox(
+                width: 20,
+                child: Icon(
+                  Icons.calendar_today_outlined,
+                  size: 13,
+                  color: ProjectNexusColors.muted,
+                ),
               ),
               const SizedBox(width: 6),
-              Text(
-                task.dueLabel,
-                style: const TextStyle(
-                  color: ProjectNexusColors.muted,
-                  fontSize: 10,
+              Expanded(
+                child: Text(
+                  task.dueLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ProjectNexusColors.muted,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -665,7 +569,9 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _AddWorkspaceTaskDialog extends StatefulWidget {
-  const _AddWorkspaceTaskDialog();
+  const _AddWorkspaceTaskDialog({required this.assignees});
+
+  final List<String> assignees;
 
   @override
   State<_AddWorkspaceTaskDialog> createState() =>
@@ -675,7 +581,13 @@ class _AddWorkspaceTaskDialog extends StatefulWidget {
 class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  String _assignee = 'Ryan Anggara Deki';
+  String? _assignee;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _assignee ??= widget.assignees.firstOrNull;
+  }
 
   @override
   void dispose() {
@@ -706,22 +618,18 @@ class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
               key: const Key('workspace_task_assignee'),
               initialValue: _assignee,
               decoration: const InputDecoration(labelText: 'Penanggung jawab'),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Nadia Putri',
-                  child: Text('Nadia Putri'),
-                ),
-                DropdownMenuItem(
-                  value: 'Ryan Anggara Deki',
-                  child: Text('Ryan Anggara Deki'),
-                ),
-                DropdownMenuItem(
-                  value: 'Rizky Ramadhan',
-                  child: Text('Rizky Ramadhan'),
-                ),
-              ],
+              items: widget.assignees
+                  .map(
+                    (assignee) => DropdownMenuItem(
+                      value: assignee,
+                      child: Text(assignee),
+                    ),
+                  )
+                  .toList(),
+              validator: (value) =>
+                  value == null ? 'Pilih anggota penanggung jawab.' : null,
               onChanged: (value) {
-                if (value != null) setState(() => _assignee = value);
+                setState(() => _assignee = value);
               },
             ),
           ],
@@ -734,12 +642,13 @@ class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
         ),
         FilledButton(
           onPressed: () {
+            if (widget.assignees.isEmpty) return;
             if (!_formKey.currentState!.validate()) return;
             Navigator.pop(
               context,
               WorkspaceTask(
                 title: _titleController.text.trim(),
-                assignee: _assignee,
+                assignee: _assignee!,
                 dueLabel: 'Baru ditambahkan',
                 status: WorkspaceTaskStatus.todo,
               ),

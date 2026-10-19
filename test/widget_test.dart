@@ -7,11 +7,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:project_nexus/features/auth/screens/auth_gate.dart';
 import 'package:project_nexus/main.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('splash shows app branding before login', (
     WidgetTester tester,
   ) async {
@@ -25,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('login_submit')), findsOneWidget);
-    expect(find.text('ProjectNexus'), findsNothing);
+    expect(find.text('SATU TIM, BANYAK IDE'), findsNothing);
   });
 
   testWidgets('login screen adapts to wide screens', (
@@ -236,11 +239,72 @@ void main() {
     expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNothing);
   });
 
+  testWidgets('dashboard filters beginner-friendly projects', (
+    WidgetTester tester,
+  ) async {
+    await _loginAs(tester);
+    await tester.scrollUntilVisible(
+      find.text('Rekrutmen terbuka'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -250),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Ramah pemula'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Ramah pemula'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNothing);
+    expect(find.text('2 proyek'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Sistem Informasi Perpustakaan'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Sistem Informasi Perpustakaan'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Peta Cerita Sejarah Lokal'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Peta Cerita Sejarah Lokal'), findsOneWidget);
+
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Ramah pemula'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Ramah pemula'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Aplikasi Pemantau Kualitas Air IoT'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsOneWidget);
+  });
+
   testWidgets('dashboard shows school achievement catalog', (
     WidgetTester tester,
   ) async {
     await _loginAs(tester);
 
+    await tester.ensureVisible(find.text('Katalog prestasi'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Katalog prestasi'));
     await tester.pumpAndSettle();
 
@@ -261,7 +325,7 @@ void main() {
     await tester.tap(find.text('Workspace'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNWidgets(2));
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsOneWidget);
     expect(find.text('Papan tugas'), findsOneWidget);
     expect(find.text('Menyusun rancangan sensor IoT'), findsOneWidget);
     expect(find.text('To-Do'), findsOneWidget);
@@ -288,6 +352,40 @@ void main() {
       ),
       findsOneWidget,
     );
+    final contribution = find.byKey(
+      const Key('member_contribution_Ryan Anggara Deki'),
+    );
+    expect(
+      find.descendant(of: contribution, matching: find.text('0/2 selesai')),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(
+      find
+          .descendant(
+            of: find.byKey(const Key('workspace_column_inProgress')),
+            matching: find.byTooltip('Ubah status tugas'),
+          )
+          .last,
+    );
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byKey(const Key('workspace_column_inProgress')),
+            matching: find.byTooltip('Ubah status tugas'),
+          )
+          .last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pindahkan ke Done'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: contribution, matching: find.text('1/2 selesai')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: contribution, matching: find.text('Langkah Pertama')),
+      findsOneWidget,
+    );
 
     await tester.ensureVisible(find.text('Tambah tugas').last);
     await tester.tap(find.text('Tambah tugas').last);
@@ -300,6 +398,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Menguji prototipe sensor'), findsOneWidget);
+    await tester.tap(find.text('Portofolio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Menghubungkan data sensor ke aplikasi'), findsOneWidget);
+    expect(find.text('Kontribusi tim'), findsOneWidget);
   });
 
   testWidgets('teacher workspace shows the same team board', (
@@ -311,7 +413,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('PANEL PEMBIMBING'), findsOneWidget);
-    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNWidgets(3));
+    expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNWidgets(2));
     expect(find.text('Menyusun rancangan sensor IoT'), findsOneWidget);
   });
 
@@ -371,14 +473,50 @@ void main() {
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
     expect(find.text('Ryan Anggara Deki'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Preferensi rekomendasi'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Preferensi rekomendasi'), findsOneWidget);
 
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1000));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('profile_edit')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('profile_name')), 'Ryan Deki');
+    await tester.ensureVisible(
+      find.byKey(const Key('profile_interest_Sosial & Budaya')),
+    );
+    await tester.tap(find.byKey(const Key('profile_interest_Sosial & Budaya')));
+    await tester.tap(find.byKey(const Key('profile_weekly_hours')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('5 jam per minggu').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Simpan profil'));
     await tester.tap(find.text('Simpan profil'));
     await tester.pumpAndSettle();
 
     expect(find.text('Ryan Deki'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Sosial & Budaya'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Sosial & Budaya'), findsOneWidget);
+    expect(find.text('Waktu luang: 5 jam per minggu'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _loginAs(tester);
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Preferensi rekomendasi'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Sosial & Budaya'), findsOneWidget);
+    expect(find.text('Waktu luang: 5 jam per minggu'), findsOneWidget);
   });
 
   testWidgets('teacher profile shows mentor information', (
@@ -412,13 +550,28 @@ void main() {
       of: find.text('Sistem Informasi Perpustakaan'),
       matching: find.byType(Card),
     );
+    expect(find.text('Ramah pemula'), findsWidgets);
     final libraryDetailButton = find.descendant(
       of: libraryProject,
       matching: find.widgetWithText(TextButton, 'Detail'),
     );
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
     await tester.ensureVisible(libraryDetailButton);
     await tester.tap(libraryDetailButton);
     await tester.pumpAndSettle();
+    expect(find.text('Tingkat proyek: Pemula'), findsOneWidget);
+    expect(
+      find.text('Wawancarai satu pengguna tentang pengalaman meminjam buku.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Kamu tidak harus menguasai semua keahlian'),
+      findsOneWidget,
+    );
     expect(find.text('Ajukan bergabung'), findsOneWidget);
     await tester.tap(find.text('Ajukan bergabung'));
     await tester.pumpAndSettle();
@@ -464,6 +617,10 @@ void main() {
     await tester.enterText(
       find.byKey(const Key('draft_project_description')),
       'Mengembangkan sistem hidroponik otomatis untuk sekolah.',
+    );
+    await tester.enterText(
+      find.byKey(const Key('draft_project_first_step')),
+      'Amati kebun sekolah dan catat masalah yang ditemukan.',
     );
     await tester.ensureVisible(find.text('Kirim untuk ditinjau'));
     await tester.tap(find.text('Kirim untuk ditinjau'));
@@ -547,7 +704,16 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Diajukan oleh: Ryan Anggara Deki'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('Aplikasi Bank Sampah Pintar'),
+          matching: find.byType(Card),
+        ),
+        matching: find.text('Ryan Anggara Deki'),
+      ),
+      findsOneWidget,
+    );
     final approveButton = find
         .widgetWithText(FilledButton, 'Setujui (ACC)')
         .first;
@@ -984,6 +1150,15 @@ Future<void> _switchAccount(
 }) async {
   await tester.drag(find.byType(CustomScrollView).first, const Offset(0, 1000));
   await tester.pumpAndSettle();
+  if (find.byTooltip('Keluar').evaluate().isEmpty) {
+    await tester.tap(find.text('Beranda').last);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 1000),
+    );
+    await tester.pumpAndSettle();
+  }
   await tester.ensureVisible(find.byTooltip('Keluar'));
   await tester.tap(find.byTooltip('Keluar'));
   await tester.pumpAndSettle();
@@ -1020,6 +1195,10 @@ Future<void> _submitProject(
   await tester.enterText(
     find.byKey(const Key('draft_project_description')),
     'Mengembangkan solusi yang bermanfaat bagi lingkungan sekolah.',
+  );
+  await tester.enterText(
+    find.byKey(const Key('draft_project_first_step')),
+    'Bicarakan kebutuhan pengguna dengan satu teman.',
   );
   await tester.ensureVisible(find.byKey(const Key('draft_skill_Flutter')));
   await tester.tap(find.byKey(const Key('draft_skill_Flutter')));

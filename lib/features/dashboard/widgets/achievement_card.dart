@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
 
 class AchievementCard extends StatelessWidget {
@@ -10,27 +11,24 @@ class AchievementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 11),
-      color: Colors.white,
-      elevation: 1,
-      shadowColor: const Color(0xFF172A2D).withValues(alpha: 0.04),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(19),
-        side: const BorderSide(color: Color(0xFFE4EAE9)),
-      ),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: achievement.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(13),
+                color: ProjectNexusColors.field,
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(achievement.icon, color: achievement.color),
+              child: Icon(
+                achievement.icon,
+                size: 20,
+                color: ProjectNexusColors.ink,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -40,26 +38,26 @@ class AchievementCard extends StatelessWidget {
                   Text(
                     achievement.title,
                     style: const TextStyle(
-                      color: Color(0xFF172A2D),
-                      fontWeight: FontWeight.w800,
-                      height: 1.25,
+                      color: ProjectNexusColors.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     achievement.category,
                     style: const TextStyle(
-                      color: Color(0xFF627174),
-                      fontSize: 12,
+                      color: ProjectNexusColors.muted,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 4),
                   Text(
                     '${achievement.team} · ${achievement.year}',
                     style: const TextStyle(
-                      color: Color(0xFF087E8B),
+                      color: ProjectNexusColors.muted,
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],

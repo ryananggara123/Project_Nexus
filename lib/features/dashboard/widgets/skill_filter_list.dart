@@ -1,48 +1,69 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../data/dashboard_sample_data.dart';
 
 class SkillFilterList extends StatelessWidget {
   const SkillFilterList({
     required this.selectedSkill,
     required this.onSelected,
+    required this.beginnerOnly,
+    required this.onBeginnerOnlyChanged,
     super.key,
   });
 
   final String selectedSkill;
   final ValueChanged<String> onSelected;
+  final bool beginnerOnly;
+  final ValueChanged<bool> onBeginnerOnlyChanged;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: dashboardSkillFilters.map((skill) {
-          final selected = selectedSkill == skill;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(skill),
-              selected: selected,
-              showCheckmark: false,
-              onSelected: (_) => onSelected(skill),
-              backgroundColor: Colors.white,
-              selectedColor: const Color(0xFFD6ECEB),
-              shape: const StadiumBorder(),
-              side: BorderSide(
-                color: selected
-                    ? const Color(0xFF087E8B)
-                    : const Color(0xFFDCE4E3),
-              ),
-              labelStyle: TextStyle(
-                color: selected
-                    ? const Color(0xFF087E8B)
-                    : const Color(0xFF172A2D),
-                fontWeight: FontWeight.w700,
+        children: [
+          for (final skill in dashboardSkillFilters)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _chip(
+                label: skill,
+                selected: selectedSkill == skill,
+                onSelected: (_) => onSelected(skill),
               ),
             ),
-          );
-        }).toList(),
+          _chip(
+            key: const Key('beginner_project_filter'),
+            label: 'Ramah pemula',
+            selected: beginnerOnly,
+            onSelected: onBeginnerOnlyChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required bool selected,
+    required ValueChanged<bool> onSelected,
+    Key? key,
+  }) {
+    return FilterChip(
+      key: key,
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: onSelected,
+      backgroundColor: ProjectNexusColors.surface,
+      selectedColor: ProjectNexusColors.ink,
+      side: BorderSide(
+        color: selected ? ProjectNexusColors.ink : ProjectNexusColors.border,
+      ),
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : ProjectNexusColors.ink,
+        fontWeight: FontWeight.w500,
+        fontSize: 13,
       ),
     );
   }

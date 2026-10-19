@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
+
+/// Tab teks dengan garis bawah teal; bisa digeser jika layar sempit.
 class DashboardTabBar extends StatelessWidget {
   const DashboardTabBar({
     required this.selectedIndex,
@@ -7,40 +10,34 @@ class DashboardTabBar extends StatelessWidget {
     super.key,
   });
 
+  static const _labels = [
+    'Feed proyek',
+    'Pengajuan saya',
+    'Lamaran saya',
+    'Katalog prestasi',
+  ];
+
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8EFEE),
-        borderRadius: BorderRadius.circular(16),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: ProjectNexusColors.border)),
       ),
-      child: Row(
-        children: [
-          _TabItem(
-            label: 'Feed proyek',
-            selected: selectedIndex == 0,
-            onTap: () => onChanged(0),
-          ),
-          _TabItem(
-            label: 'Pengajuan saya',
-            selected: selectedIndex == 1,
-            onTap: () => onChanged(1),
-          ),
-          _TabItem(
-            label: 'Lamaran saya',
-            selected: selectedIndex == 2,
-            onTap: () => onChanged(2),
-          ),
-          _TabItem(
-            label: 'Katalog prestasi',
-            selected: selectedIndex == 3,
-            onTap: () => onChanged(3),
-          ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < _labels.length; i++)
+              _TabItem(
+                label: _labels[i],
+                selected: selectedIndex == i,
+                onTap: () => onChanged(i),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -59,42 +56,30 @@ class _TabItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 46),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF172A2D).withValues(alpha: 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  color: selected
-                      ? const Color(0xFF172A2D)
-                      : const Color(0xFF718083),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
+          margin: const EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? ProjectNexusColors.teal : Colors.transparent,
+                width: 2,
               ),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? ProjectNexusColors.ink
+                  : ProjectNexusColors.muted,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14,
             ),
           ),
         ),

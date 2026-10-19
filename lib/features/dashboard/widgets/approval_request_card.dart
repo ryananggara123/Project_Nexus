@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
+import 'project_card.dart';
 
 class ApprovalRequestCard extends StatelessWidget {
   const ApprovalRequestCard({
@@ -18,193 +20,76 @@ class ApprovalRequestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: Color(0xFFE1EAE8)),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF2E5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.hourglass_top_rounded,
-                    color: Color(0xFF9A572C),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 11),
+                PersonAvatar(project.leader, radius: 16),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        project.leader,
-                        style: const TextStyle(
-                          color: Color(0xFF172A2D),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Pengajuan siswa',
-                        style: TextStyle(
-                          color: Color(0xFF718083),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF2E5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'MENUNGGU TINJAUAN',
-                    style: TextStyle(
-                      color: Color(0xFF9A572C),
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 17),
-            Text(
-              project.title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: const Color(0xFF172A2D),
-                fontWeight: FontWeight.w800,
-                height: 1.18,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              project.description,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: const Color(0xFF627174), height: 1.5),
-            ),
-            const SizedBox(height: 15),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F8F7),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'TARGET PROYEK',
-                    style: TextStyle(
-                      color: Color(0xFF718083),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    project.event,
+                  child: Text(
+                    project.leader,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFF172A2D),
+                      color: ProjectNexusColors.ink,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 9),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.person_outline_rounded,
-                        size: 16,
-                        color: Color(0xFF627174),
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          'Diajukan oleh: ${project.leader}',
-                          style: const TextStyle(
-                            color: Color(0xFF526568),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.school_outlined,
-                        size: 16,
-                        color: Color(0xFF627174),
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          'Pendamping: ${project.teacherName}',
-                          style: const TextStyle(
-                            color: Color(0xFF526568),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
+                const StatusPill(
+                  label: 'Menunggu tinjauan',
+                  color: ProjectNexusColors.warning,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              project.title,
+              style: const TextStyle(
+                color: ProjectNexusColors.ink,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
               ),
             ),
-            const SizedBox(height: 15),
-            const Divider(height: 1, color: Color(0xFFE8EFEE)),
+            const SizedBox(height: 6),
+            Text(
+              project.description,
+              style: const TextStyle(
+                color: ProjectNexusColors.muted,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
             const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 10,
-              runSpacing: 8,
+            _InfoLine(icon: Icons.flag_outlined, text: project.event),
+            const SizedBox(height: 6),
+            _InfoLine(
+              icon: Icons.school_outlined,
+              text: 'Pendamping: ${project.teacherName}',
+            ),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                OutlinedButton.icon(
-                  onPressed: onReject,
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: const Text('Tolak'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF9F423A),
-                    side: const BorderSide(color: Color(0xFFE8C9C5)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onReject,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ProjectNexusColors.error,
                     ),
+                    child: const Text('Tolak'),
                   ),
                 ),
-                FilledButton.icon(
-                  onPressed: onApprove,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Setujui (ACC)'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF173D3D),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: onApprove,
+                    child: const Text('Setujui (ACC)'),
                   ),
                 ),
               ],
@@ -212,6 +97,32 @@ class ApprovalRequestCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: ProjectNexusColors.muted),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: ProjectNexusColors.muted,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
