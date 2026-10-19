@@ -1,11 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:project_nexus/features/dashboard/models/contribution_recognition.dart';
+import 'package:project_nexus/features/dashboard/models/workspace_task.dart';
 import 'package:project_nexus/features/auth/models/user_role.dart';
 import 'package:project_nexus/features/dashboard/models/project_application.dart';
 import 'package:project_nexus/features/dashboard/models/project_workflow_store.dart';
 import 'package:project_nexus/features/dashboard/models/portfolio_item.dart';
 
 void main() {
+  test('recognizes completed contributions without ranking team members', () {
+    const tasks = [
+      WorkspaceTask(
+        title: 'Satu',
+        assignee: 'Nadia',
+        dueLabel: '',
+        status: WorkspaceTaskStatus.done,
+      ),
+      WorkspaceTask(
+        title: 'Dua',
+        assignee: 'Nadia',
+        dueLabel: '',
+        status: WorkspaceTaskStatus.done,
+      ),
+      WorkspaceTask(
+        title: 'Tiga',
+        assignee: 'Nadia',
+        dueLabel: '',
+        status: WorkspaceTaskStatus.done,
+      ),
+      WorkspaceTask(
+        title: 'Empat',
+        assignee: 'Nadia',
+        dueLabel: '',
+        status: WorkspaceTaskStatus.todo,
+      ),
+      WorkspaceTask(
+        title: 'Lain',
+        assignee: 'Ryan',
+        dueLabel: '',
+        status: WorkspaceTaskStatus.todo,
+      ),
+    ];
+
+    final contributions = ContributionRecognition.summarize(
+      memberNames: const ['Nadia', 'Ryan', 'Dewi'],
+      tasks: tasks,
+    );
+
+    expect(contributions[0].completedTaskCount, 3);
+    expect(contributions[0].assignedTaskCount, 4);
+    expect(contributions[0].badges.map((badge) => badge.title), [
+      'Langkah Pertama',
+      'Konsisten',
+    ]);
+    expect(contributions[1].completedTaskCount, 0);
+    expect(contributions[1].badges, isEmpty);
+    expect(contributions[2].assignedTaskCount, 0);
+    expect(contributions[2].progress, 0);
+  });
+
   late ProjectWorkflowStore store;
 
   setUp(() {

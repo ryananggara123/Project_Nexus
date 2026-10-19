@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
 
+enum ProjectDifficulty {
+  beginner('Pemula'),
+  intermediate('Menengah'),
+  advanced('Lanjutan');
+
+  const ProjectDifficulty(this.label);
+
+  final String label;
+}
+
 class ProjectListing {
   const ProjectListing({
     required this.id,
@@ -11,6 +21,9 @@ class ProjectListing {
     required this.teacherName,
     required this.statusAcc,
     required this.recruitmentOpen,
+    this.difficulty = ProjectDifficulty.beginner,
+    this.weeklyHours = 3,
+    this.firstStep = '',
     this.reviewNote,
   });
 
@@ -23,6 +36,9 @@ class ProjectListing {
   final String teacherName;
   final String statusAcc;
   final bool recruitmentOpen;
+  final ProjectDifficulty difficulty;
+  final int weeklyHours;
+  final String firstStep;
   final String? reviewNote;
 
   ProjectListing copyWith({
@@ -30,6 +46,9 @@ class ProjectListing {
     String? description,
     String? statusAcc,
     bool? recruitmentOpen,
+    ProjectDifficulty? difficulty,
+    int? weeklyHours,
+    String? firstStep,
     String? reviewNote,
     bool clearReviewNote = false,
   }) {
@@ -43,6 +62,9 @@ class ProjectListing {
       teacherName: teacherName,
       statusAcc: statusAcc ?? this.statusAcc,
       recruitmentOpen: recruitmentOpen ?? this.recruitmentOpen,
+      difficulty: difficulty ?? this.difficulty,
+      weeklyHours: weeklyHours ?? this.weeklyHours,
+      firstStep: firstStep ?? this.firstStep,
       reviewNote: clearReviewNote ? null : reviewNote ?? this.reviewNote,
     );
   }

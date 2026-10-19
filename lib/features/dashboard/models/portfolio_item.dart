@@ -9,6 +9,7 @@ class PortfolioItem {
     required this.year,
     required this.icon,
     required this.color,
+    this.isContribution = false,
   });
 
   final String owner;
@@ -18,8 +19,9 @@ class PortfolioItem {
   final String year;
   final IconData icon;
   final Color color;
+  final bool isContribution;
 
-  PortfolioItem copyWith({String? owner}) {
+  PortfolioItem copyWith({String? owner, bool? isContribution}) {
     return PortfolioItem(
       owner: owner ?? this.owner,
       title: title,
@@ -28,6 +30,7 @@ class PortfolioItem {
       year: year,
       icon: icon,
       color: color,
+      isContribution: isContribution ?? this.isContribution,
     );
   }
 }

@@ -256,5 +256,4 @@ class ProjectWorkflowStore extends ChangeNotifier {
             application.applicantName.toLowerCase() ==
                 applicantName.trim().toLowerCase(),
       );
-
 }

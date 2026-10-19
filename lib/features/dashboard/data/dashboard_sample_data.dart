@@ -16,6 +16,9 @@ const dashboardProjects = [
     teacherName: 'Budi Santoso',
     statusAcc: 'pending',
     recruitmentOpen: false,
+    difficulty: ProjectDifficulty.beginner,
+    weeklyHours: 2,
+    firstStep: 'Amati kondisi kebun sekolah dan catat masalah yang ditemukan.',
   ),
   ProjectListing(
     id: 'sample-water-iot',
@@ -27,6 +30,9 @@ const dashboardProjects = [
     teacherName: 'Budi Santoso',
     statusAcc: 'approved',
     recruitmentOpen: true,
+    difficulty: ProjectDifficulty.intermediate,
+    weeklyHours: 5,
+    firstStep: 'Petakan sumber air dan tentukan titik pengukuran.',
   ),
   ProjectListing(
     id: 'sample-library',
@@ -38,6 +44,9 @@ const dashboardProjects = [
     teacherName: 'Siti Rahmawati',
     statusAcc: 'approved',
     recruitmentOpen: true,
+    difficulty: ProjectDifficulty.beginner,
+    weeklyHours: 3,
+    firstStep: 'Wawancarai satu pengguna tentang pengalaman meminjam buku.',
   ),
   ProjectListing(
     id: 'sample-local-history',
@@ -49,6 +58,9 @@ const dashboardProjects = [
     teacherName: 'Budi Santoso',
     statusAcc: 'approved',
     recruitmentOpen: true,
+    difficulty: ProjectDifficulty.beginner,
+    weeklyHours: 2,
+    firstStep: 'Kumpulkan satu cerita sejarah dari warga sekitar sekolah.',
   ),
 ];
 
