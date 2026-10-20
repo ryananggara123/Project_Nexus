@@ -199,7 +199,8 @@ class ApplicantManagementDialog extends StatelessWidget {
       _ => 'Perubahan tidak dapat dilakukan untuk proyek ini.',
     };
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -268,15 +269,16 @@ class _ApplicationTile extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 TextButton(
                   key: Key('reject_${application.applicantName}'),
                   onPressed: onReject,
                   child: const Text('Tolak'),
                 ),
-                const SizedBox(width: 8),
                 FilledButton(
                   key: Key('accept_${application.applicantName}'),
                   onPressed: onAccept,

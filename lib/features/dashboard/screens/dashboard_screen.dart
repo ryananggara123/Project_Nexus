@@ -271,19 +271,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               selectedIconTheme: const IconThemeData(
                 color: ProjectNexusColors.teal,
               ),
-              selectedLabelTextStyle: const TextStyle(
-                color: ProjectNexusColors.ink,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+              selectedLabelTextStyle: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(
+                    color: ProjectNexusColors.ink,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
               unselectedIconTheme: const IconThemeData(
                 color: ProjectNexusColors.muted,
               ),
-              unselectedLabelTextStyle: const TextStyle(
-                color: ProjectNexusColors.muted,
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
+              unselectedLabelTextStyle: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(
+                    color: ProjectNexusColors.muted,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
               destinations: const [
                 NavigationRailDestination(
                   icon: Icon(Icons.home_outlined),
@@ -875,8 +877,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Rekrutmen proyek sudah ditutup.',
                         _ => 'Lamaran tidak dapat dikirim untuk proyek ini.',
                       };
-                      ScaffoldMessenger.of(this.context)
-                          .showSnackBar(SnackBar(content: Text(message)));
+                      _showMessage(SnackBar(content: Text(message)));
                     },
               child: Text(
                 application?.status.label ??
@@ -920,14 +921,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         role: widget.role,
       );
       if (result != WorkflowActionResult.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _showMessage(
           const SnackBar(
             content: Text('Pengajuan proyek tidak dapat disimpan.'),
           ),
         );
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      _showMessage(
         const SnackBar(
           content: Text('Draf terkirim dan menunggu persetujuan guru.'),
         ),
@@ -954,12 +955,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       role: widget.role,
     );
     if (result != WorkflowActionResult.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _showMessage(
         const SnackBar(content: Text('Revisi proyek tidak dapat dikirim.')),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    _showMessage(
       const SnackBar(
         content: Text('Revisi terkirim dan menunggu tinjauan guru.'),
       ),
@@ -967,7 +968,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _logout() {
+    // Pesan dari akun ini tidak boleh terbawa ke akun berikutnya.
+    ScaffoldMessenger.of(context).clearSnackBars();
     widget.onLogout();
+  }
+
+  /// Menampilkan pesan terbaru dan langsung menggantikan pesan sebelumnya,
+  /// sehingga hasil aksi tidak tertahan di belakang antrean snackbar.
+  void _showMessage(SnackBar message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(message);
   }
 
   void _updateProjectStatus(ProjectListing project, String status) {
@@ -978,14 +989,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       role: widget.role,
     );
     if (result != WorkflowActionResult.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _showMessage(
         const SnackBar(
           content: Text('Hanya guru pendamping proyek yang dapat meninjaunya.'),
         ),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    _showMessage(
       SnackBar(
         content: Text(
           status == 'approved'
@@ -1044,14 +1055,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       note: note.isEmpty ? null : note,
     );
     if (reviewResult != WorkflowActionResult.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _showMessage(
         const SnackBar(
           content: Text('Hanya guru pendamping proyek yang dapat meninjaunya.'),
         ),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    _showMessage(
       const SnackBar(content: Text('Pengajuan ditolak dan siswa diberi tahu.')),
     );
   }

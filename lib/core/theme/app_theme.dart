@@ -70,7 +70,10 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(64, 48),
           shape: buttonShape,
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          textStyle: base.textTheme.labelLarge?.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -84,7 +87,9 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: ProjectNexusColors.teal,
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          textStyle: base.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       cardTheme: CardThemeData(
@@ -134,12 +139,12 @@ abstract final class AppTheme {
         backgroundColor: ProjectNexusColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        titleTextStyle: const TextStyle(
+        titleTextStyle: base.textTheme.titleLarge?.copyWith(
           color: ProjectNexusColors.ink,
           fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
-        contentTextStyle: const TextStyle(
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(
           color: ProjectNexusColors.ink,
           fontSize: 14,
           height: 1.5,
