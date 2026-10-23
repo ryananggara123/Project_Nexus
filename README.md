@@ -28,6 +28,7 @@ Siswa yang ingin ikut lomba atau membuat proyek sering kesulitan menemukan rekan
 | Workspace tim | Papan tugas To-Do, In Progress, dan Done yang hanya dapat dibuka anggota tim dan guru pendamping. |
 | Portofolio & lencana | Tugas yang selesai tercatat otomatis sebagai kontribusi dan diberi lencana apresiasi. |
 | Katalog prestasi & profil | Etalase prestasi sekolah serta profil yang dapat diedit (keahlian, minat, waktu luang). |
+| Penyimpanan lokal | Proyek, lamaran, tugas Workspace, portofolio, dan akun siswa tersimpan di database lokal sehingga tetap ada setelah aplikasi ditutup. Kata sandi disimpan sebagai hash SHA-256. |
 
 ## Tangkapan layar
 
@@ -60,6 +61,8 @@ Tampilan pada layar lebar (navigasi samping):
 
 - **Flutter** dan **Dart** dengan widget Material 3
 - **ChangeNotifier** untuk state alur proyek dan lamaran (`ProjectWorkflowStore`)
+- **Hive CE** sebagai database lokal (IndexedDB di browser, berkas di Android)
+- **crypto** (SHA-256) untuk hash kata sandi akun siswa
 - **shared_preferences** untuk sesi login dan preferensi rekomendasi
 - **flutter_test** untuk unit test dan widget test
 
@@ -68,7 +71,9 @@ Tampilan pada layar lebar (navigasi samping):
 ```
 lib/
 ├── main.dart                     # titik masuk aplikasi
-├── core/theme/                   # warna dan tema terpusat (AppTheme)
+├── core/
+│   ├── storage/                  # database lokal (LocalDatabase)
+│   └── theme/                    # warna dan tema terpusat (AppTheme)
 └── features/
     ├── auth/                     # splash, login, registrasi, sesi (AuthGate)
     │   ├── models/  screens/  widgets/
@@ -77,7 +82,7 @@ lib/
         ├── models/               # model, aturan alur proyek, rekomendasi
         ├── screens/
         └── widgets/
-test/                             # 12 unit test dan 21 widget test
+test/                             # 17 unit test dan 22 widget test
 docs/screenshots/                 # tangkapan layar untuk README
 ```
 
@@ -112,22 +117,27 @@ flutter run
 
 ```bash
 flutter analyze   # analisis statis: No issues found
-flutter test      # 33 pengujian: All tests passed
+flutter test      # 39 pengujian: All tests passed
 ```
 
 ## Batasan prototipe
 
-- Data proyek, lamaran, dan tugas masih disimpan di memori dan kembali ke kondisi awal saat aplikasi dimuat ulang. Hanya sesi login dan preferensi yang tersimpan lokal.
+- Data tersimpan di database lokal pada masing-masing perangkat atau browser, sehingga belum tersinkron antarperangkat.
 - Autentikasi masih lokal; Firebase belum diintegrasikan sehingga belum ada unggah berkas portofolio.
 - Prototipe ini belum ditujukan untuk menyimpan data siswa yang sensitif.
 
+## Progres pasca-UTS
+
+| Minggu | Pekerjaan | Status |
+|---|---|---|
+| 1 | Database lokal (Hive CE) untuk proyek, lamaran, tugas Workspace, portofolio, dan akun siswa, beserta hash kata sandi dan pengujian persistensi | Selesai |
+
 ## Rencana menuju UAS
 
-1. Integrasi backend sesuai PRD: Firebase Authentication, Cloud Firestore untuk proyek, lamaran, dan tugas, serta Firebase Storage untuk berkas portofolio.
-2. Penyimpanan lokal (cache) agar data tetap tersedia saat offline.
-3. Pemanfaatan sensor perangkat: kamera untuk memotret karya atau sertifikat yang diunggah ke portofolio.
-4. Notifikasi push untuk guru (draf baru) dan ketua proyek (pelamar baru).
-5. Pengujian pada emulator dan perangkat Android fisik.
+1. Integrasi backend sesuai PRD: Firebase Authentication, Cloud Firestore untuk proyek, lamaran, dan tugas, serta Firebase Storage untuk berkas portofolio. Database lokal dipertahankan sebagai cache saat offline.
+2. Pemanfaatan sensor perangkat: kamera untuk memotret karya atau sertifikat yang diunggah ke portofolio.
+3. Notifikasi push untuk guru (draf baru) dan ketua proyek (pelamar baru).
+4. Pengujian pada emulator dan perangkat Android fisik.
 
 ## Penggunaan AI
 
