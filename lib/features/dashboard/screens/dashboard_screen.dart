@@ -12,6 +12,7 @@ import '../models/project_application.dart';
 import '../models/portfolio_item.dart';
 import '../models/project_recommender.dart';
 import '../models/project_workflow_store.dart';
+import '../models/team_work_store.dart';
 import '../models/profile_data.dart';
 import '../models/workspace_task.dart';
 import '../widgets/achievement_card.dart';
@@ -31,6 +32,7 @@ class DashboardScreen extends StatefulWidget {
     required this.role,
     required this.onLogout,
     required this.projectStore,
+    this.teamStore,
     this.studentName,
     this.teacherName,
     super.key,
@@ -39,6 +41,10 @@ class DashboardScreen extends StatefulWidget {
   final UserRole role;
   final VoidCallback onLogout;
   final ProjectWorkflowStore projectStore;
+
+  /// Penyimpanan tugas Workspace dan portofolio. Bila kosong, layar membuat
+  /// penyimpanan sendiri di memori.
+  final TeamWorkStore? teamStore;
   final String? studentName;
   final String? teacherName;
 
@@ -56,79 +62,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   bool _beginnerOnly = false;
   bool _profileEditedBeforePreferencesLoad = false;
-  final Map<String, List<WorkspaceTask>> _workspaceTasks = {
-    'sample-water-iot': [
-      const WorkspaceTask(
-        title: 'Riset parameter kualitas air',
-        assignee: 'Rizky Ramadhan',
-        dueLabel: 'Hari ini',
-        status: WorkspaceTaskStatus.done,
-      ),
-      const WorkspaceTask(
-        title: 'Menyusun rancangan sensor IoT',
-        assignee: 'Nadia Putri',
-        dueLabel: 'Besok',
-        status: WorkspaceTaskStatus.inProgress,
-      ),
-      const WorkspaceTask(
-        title: 'Membuat tampilan dashboard aplikasi',
-        assignee: 'Ryan Anggara Deki',
-        dueLabel: '12 Okt 2026',
-        status: WorkspaceTaskStatus.inProgress,
-      ),
-      const WorkspaceTask(
-        title: 'Menghubungkan data sensor ke aplikasi',
-        assignee: 'Ryan Anggara Deki',
-        dueLabel: '15 Okt 2026',
-        status: WorkspaceTaskStatus.todo,
-      ),
-      const WorkspaceTask(
-        title: 'Menyiapkan bahan presentasi proyek',
-        assignee: 'Nadia Putri',
-        dueLabel: '18 Okt 2026',
-        status: WorkspaceTaskStatus.todo,
-      ),
-    ],
-  };
-  final List<PortfolioItem> _portfolioItems = [
-    const PortfolioItem(
-      owner: 'Ryan Anggara Deki',
-      title: 'Aplikasi Jadwal Kelas',
-      category: 'Mobile Development',
-      description: 'Aplikasi Flutter untuk membantu siswa melihat jadwal dan pengingat kelas.',
-      year: '2026',
-      icon: Icons.phone_android_rounded,
-      color: Color(0xFF087E8B),
-    ),
-    const PortfolioItem(
-      owner: 'Ryan Anggara Deki',
-      title: 'Desain Ulang Perpustakaan Digital',
-      category: 'UI/UX',
-      description:
-          'Membuat prototipe antarmuka peminjaman buku yang mudah digunakan.',
-      year: '2025',
-      icon: Icons.design_services_outlined,
-      color: Color(0xFFC46A3A),
-    ),
-    const PortfolioItem(
-      owner: 'Nadia Putri',
-      title: 'Inovasi Teknologi Lingkungan',
-      category: 'Prestasi · Tingkat Provinsi',
-      description: 'Merancang sistem pemantauan lingkungan untuk kompetisi sains pelajar.',
-      year: '2025',
-      icon: Icons.emoji_events_outlined,
-      color: Color(0xFF536B45),
-    ),
-    const PortfolioItem(
-      owner: 'Rizky Ramadhan',
-      title: 'Peta Cerita Sejarah Lokal',
-      category: 'Riset & Data',
-      description: 'Mengumpulkan cerita sejarah lokal dan menyajikannya dalam peta interaktif.',
-      year: '2025',
-      icon: Icons.map_outlined,
-      color: Color(0xFF6657A5),
-    ),
-  ];
+  TeamWorkStore? _ownedTeamStore;
+  late final TeamWorkStore _teamStore =
+      widget.teamStore ?? (_ownedTeamStore = TeamWorkStore());
   late ProfileData _profile = _isTeacherView
       ? ProfileData(
           name: _currentTeacherName,
@@ -179,7 +115,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    widget.projectStore.addListener(_onProjectStoreChanged);
+    widget.projectStore.addListener(_onStoreChanged);
+    _teamStore.addListener(_onStoreChanged);
     if (!_isTeacherView) _restoreRecommendationPreferences();
   }
 
@@ -187,18 +124,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void didUpdateWidget(covariant DashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projectStore != widget.projectStore) {
-      oldWidget.projectStore.removeListener(_onProjectStoreChanged);
-      widget.projectStore.addListener(_onProjectStoreChanged);
+      oldWidget.projectStore.removeListener(_onStoreChanged);
+      widget.projectStore.addListener(_onStoreChanged);
     }
   }
 
   @override
   void dispose() {
-    widget.projectStore.removeListener(_onProjectStoreChanged);
+    widget.projectStore.removeListener(_onStoreChanged);
+    _teamStore.removeListener(_onStoreChanged);
+    _ownedTeamStore?.dispose();
     super.dispose();
   }
 
-  void _onProjectStoreChanged() {
+  void _onStoreChanged() {
     if (mounted) setState(() {});
   }
 
@@ -397,7 +336,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       );
     }
-    final tasks = _workspaceTasks.putIfAbsent(project.id, () => []);
+    final tasks = _teamStore.tasksFor(project.id);
     return WorkspaceScreen(
       header: _appHeader,
       availableProjects: _workspaceProjects,
@@ -408,7 +347,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       members: _workspaceMembers(project),
       tasks: tasks,
       isTeacherView: _isTeacherView,
-      onAddTask: (task) => setState(() => tasks.add(task)),
+      onAddTask: (task) => _teamStore.addTask(project.id, task),
       onTaskStatusChanged: (task, status) =>
           _updateWorkspaceTaskStatus(project.id, task, status),
     );
@@ -431,7 +370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     if (selectedProject.isNotEmpty) return selectedProject.first;
     return accessibleProjects.firstWhere(
-      (project) => _workspaceTasks.containsKey(project.id),
+      (project) => _teamStore.hasTasks(project.id),
       orElse: () => accessibleProjects.first,
     );
   }
@@ -450,7 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildPortfolio() {
     final completedContributions = [
-      for (final entry in _workspaceTasks.entries)
+      for (final entry in _teamStore.taskEntries)
         for (final task in entry.value)
           if (task.status == WorkspaceTaskStatus.done)
             for (final project in _projects)
@@ -471,10 +410,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       header: _appHeader,
       role: widget.role,
       studentName: _profile.name,
-      items: [...completedContributions, ..._portfolioItems],
-      onAddItem: (item) => setState(
-        () => _portfolioItems.insert(0, item.copyWith(owner: _profile.name)),
-      ),
+      items: [...completedContributions, ..._teamStore.portfolioItems],
+      onAddItem: (item) =>
+          _teamStore.addPortfolioItem(item.copyWith(owner: _profile.name)),
     );
   }
 
@@ -524,13 +462,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WorkspaceTask task,
     WorkspaceTaskStatus status,
   ) {
-    setState(() {
-      final tasks = _workspaceTasks.putIfAbsent(projectId, () => []);
-      final index = tasks.indexOf(task);
-      if (index != -1) {
-        tasks[index] = task.copyWith(status: status);
-      }
-    });
+    _teamStore.updateTaskStatus(projectId, task, status);
   }
 
   Widget get _appHeader =>
@@ -861,7 +793,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         applicantName: _profile.name,
                         role: widget.role,
                         applicantSkills: _profile.skills,
-                        applicantPortfolio: _portfolioItems
+                        applicantPortfolio: _teamStore.portfolioItems
                             .where((item) => item.owner == _profile.name)
                             .toList(),
                       );

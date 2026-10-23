@@ -229,7 +229,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      if (account != null && account.password != _passwordController.text) {
+      if (account != null &&
+          !account.verifyPassword(_passwordController.text)) {
         _showMessage(const SnackBar(content: Text('Kata sandi tidak sesuai.')));
         return;
       }

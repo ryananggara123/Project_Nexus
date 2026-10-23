@@ -220,7 +220,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (!_formKey.currentState!.validate()) return;
     Navigator.pop(
       context,
-      StudentDemoAccount(
+      StudentDemoAccount.register(
         fullName: _nameController.text.trim(),
         nim: _nimController.text.trim(),
         username: _usernameController.text.trim(),

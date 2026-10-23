@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/storage/local_database.dart';
 import '../../dashboard/models/project_workflow_store.dart';
+import '../../dashboard/models/team_work_store.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../models/student_demo_account.dart';
 import '../models/user_role.dart';
@@ -12,7 +14,10 @@ import 'login_screen.dart';
 import 'splash_screen.dart';
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  const AuthGate({this.database, super.key});
+
+  /// Database lokal. Bila kosong, data hanya disimpan di memori.
+  final LocalDatabase? database;
 
   static const splashDuration = Duration(milliseconds: 1800);
 
@@ -30,8 +35,18 @@ class _AuthGateState extends State<AuthGate> {
   String? _currentTeacherName;
   bool _showSplash = true;
   Timer? _splashTimer;
-  final List<StudentDemoAccount> _studentAccounts = [];
-  final ProjectWorkflowStore _projectStore = ProjectWorkflowStore();
+  late final List<StudentDemoAccount> _studentAccounts = [
+    ...decodeAll(
+      widget.database?.readList(LocalDatabase.studentAccountsKey) ?? const [],
+      StudentDemoAccount.tryFromJson,
+    ),
+  ];
+  late final ProjectWorkflowStore _projectStore = ProjectWorkflowStore(
+    database: widget.database,
+  );
+  late final TeamWorkStore _teamStore = TeamWorkStore(
+    database: widget.database,
+  );
 
   @override
   void initState() {
@@ -46,6 +61,7 @@ class _AuthGateState extends State<AuthGate> {
   void dispose() {
     _splashTimer?.cancel();
     _projectStore.dispose();
+    _teamStore.dispose();
     super.dispose();
   }
 
@@ -116,6 +132,11 @@ class _AuthGateState extends State<AuthGate> {
         studentAccounts: _studentAccounts,
         onRegister: (account) {
           setState(() => _studentAccounts.add(account));
+          unawaited(
+            widget.database?.writeList(LocalDatabase.studentAccountsKey, [
+              for (final item in _studentAccounts) item.toJson(),
+            ]),
+          );
         },
         onLogin: (role, {studentName, teacherName}) async {
           await _persistSession(
@@ -138,6 +159,7 @@ class _AuthGateState extends State<AuthGate> {
       studentName: _currentStudentName,
       teacherName: _currentTeacherName,
       projectStore: _projectStore,
+      teamStore: _teamStore,
       onLogout: () async {
         await _clearSession();
         if (!mounted) return;
