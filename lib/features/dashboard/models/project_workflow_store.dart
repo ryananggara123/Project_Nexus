@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/storage/local_database.dart';
 import '../../auth/models/user_role.dart';
 import '../data/dashboard_sample_data.dart';
 import 'dashboard_models.dart';
@@ -7,27 +8,68 @@ import 'portfolio_item.dart';
 import 'project_application.dart';
 
 class ProjectWorkflowStore extends ChangeNotifier {
-  final List<ProjectListing> _projects = [...dashboardProjects];
-  final List<ProjectApplication> _applications = [
-    const ProjectApplication(
-      id: 'sample-water-ryan',
-      projectId: 'sample-water-iot',
-      applicantName: 'Ryan Anggara Deki',
-      status: ProjectApplicationStatus.accepted,
-      skills: ['Flutter', 'UI/UX', 'Prototyping', 'Kolaborasi'],
-    ),
-    const ProjectApplication(
-      id: 'sample-water-rizky',
-      projectId: 'sample-water-iot',
-      applicantName: 'Rizky Ramadhan',
-      status: ProjectApplicationStatus.accepted,
-      skills: ['Riset', 'Penulis', 'Desain'],
-    ),
-  ];
+  /// Tanpa [database], data hanya hidup di memori (dipakai pengujian).
+  /// Dengan [database], data dimuat saat dibuka dan disimpan setiap berubah.
+  ProjectWorkflowStore({this.database}) {
+    _restore();
+  }
+
+  final LocalDatabase? database;
+  final List<ProjectListing> _projects = [];
+  final List<ProjectApplication> _applications = [];
   int _nextApplicationId = 0;
+  Future<void> _lastSave = Future.value();
 
   List<ProjectListing> get projects => List.unmodifiable(_projects);
   List<ProjectApplication> get applications => List.unmodifiable(_applications);
+
+  /// Selesai ketika penyimpanan terakhir ke database sudah tertulis.
+  Future<void> get saved => _lastSave;
+
+  void _restore() {
+    final storedProjects = database?.readList(LocalDatabase.projectsKey);
+    final storedApplications = database?.readList(
+      LocalDatabase.applicationsKey,
+    );
+    _projects.addAll(
+      storedProjects == null
+          ? dashboardProjects
+          : decodeAll(storedProjects, ProjectListing.tryFromJson),
+    );
+    _applications.addAll(
+      storedApplications == null
+          ? sampleApplications
+          : decodeAll(storedApplications, ProjectApplication.tryFromJson),
+    );
+    // Lanjutkan penomoran agar ID lamaran baru tidak bentrok dengan yang tersimpan.
+    for (final application in _applications) {
+      final number = int.tryParse(application.id.replaceFirst('application-', ''));
+      if (number != null && number > _nextApplicationId) {
+        _nextApplicationId = number;
+      }
+    }
+    // Pembukaan pertama (atau data rusak): simpan data awal ke database.
+    if (storedProjects == null || storedApplications == null) _persist();
+  }
+
+  void _persist() {
+    final database = this.database;
+    if (database == null) return;
+    _lastSave = Future.wait([
+      database.writeList(LocalDatabase.projectsKey, [
+        for (final project in _projects) project.toJson(),
+      ]),
+      database.writeList(LocalDatabase.applicationsKey, [
+        for (final application in _applications) application.toJson(),
+      ]),
+    ]);
+  }
+
+  /// Memberi tahu tampilan lalu menyimpan perubahan ke database lokal.
+  void _commit() {
+    notifyListeners();
+    _persist();
+  }
 
   WorkflowActionResult submit(
     ProjectListing project, {
@@ -45,7 +87,7 @@ class ProjectWorkflowStore extends ChangeNotifier {
       return WorkflowActionResult.duplicateProject;
     }
     _projects.insert(0, project);
-    notifyListeners();
+    _commit();
     return WorkflowActionResult.success;
   }
 
@@ -133,7 +175,7 @@ class ProjectWorkflowStore extends ChangeNotifier {
         portfolioItems: List.unmodifiable(applicantPortfolio),
       ),
     );
-    notifyListeners();
+    _commit();
     return WorkflowActionResult.success;
   }
 
@@ -161,7 +203,7 @@ class ProjectWorkflowStore extends ChangeNotifier {
           ? ProjectApplicationStatus.accepted
           : ProjectApplicationStatus.rejected,
     );
-    notifyListeners();
+    _commit();
     return WorkflowActionResult.success;
   }
 
@@ -183,7 +225,7 @@ class ProjectWorkflowStore extends ChangeNotifier {
     }
 
     _projects[index] = project.copyWith(recruitmentOpen: isOpen);
-    notifyListeners();
+    _commit();
     return WorkflowActionResult.success;
   }
 
@@ -210,7 +252,7 @@ class ProjectWorkflowStore extends ChangeNotifier {
       recruitmentOpen: status == 'approved',
       reviewNote: note,
     );
-    notifyListeners();
+    _commit();
     return WorkflowActionResult.success;
   }
 
@@ -237,7 +279,7 @@ class ProjectWorkflowStore extends ChangeNotifier {
       recruitmentOpen: false,
       clearReviewNote: true,
     );
-    notifyListeners();
+    _commit();
     return WorkflowActionResult.success;
   }
 

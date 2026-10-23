@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/dashboard_models.dart';
+import '../models/portfolio_item.dart';
+import '../models/project_application.dart';
+import '../models/workspace_task.dart';
 
 const dashboardSkillFilters = ['Semua', 'UI/UX', 'Flutter', 'Riset', 'Penulis'];
 
@@ -88,5 +91,101 @@ const schoolAchievements = [
     year: '2024',
     icon: Icons.science_outlined,
     color: Color(0xFF536B45),
+  ),
+];
+
+/// Data awal yang dimasukkan ke database lokal saat aplikasi pertama kali dibuka.
+const sampleApplications = [
+  ProjectApplication(
+    id: 'sample-water-ryan',
+    projectId: 'sample-water-iot',
+    applicantName: 'Ryan Anggara Deki',
+    status: ProjectApplicationStatus.accepted,
+    skills: ['Flutter', 'UI/UX', 'Prototyping', 'Kolaborasi'],
+  ),
+  ProjectApplication(
+    id: 'sample-water-rizky',
+    projectId: 'sample-water-iot',
+    applicantName: 'Rizky Ramadhan',
+    status: ProjectApplicationStatus.accepted,
+    skills: ['Riset', 'Penulis', 'Desain'],
+  ),
+];
+
+const sampleWorkspaceTasks = {
+  'sample-water-iot': [
+    WorkspaceTask(
+      title: 'Riset parameter kualitas air',
+      assignee: 'Rizky Ramadhan',
+      dueLabel: 'Hari ini',
+      status: WorkspaceTaskStatus.done,
+    ),
+    WorkspaceTask(
+      title: 'Menyusun rancangan sensor IoT',
+      assignee: 'Nadia Putri',
+      dueLabel: 'Besok',
+      status: WorkspaceTaskStatus.inProgress,
+    ),
+    WorkspaceTask(
+      title: 'Membuat tampilan dashboard aplikasi',
+      assignee: 'Ryan Anggara Deki',
+      dueLabel: '12 Okt 2026',
+      status: WorkspaceTaskStatus.inProgress,
+    ),
+    WorkspaceTask(
+      title: 'Menghubungkan data sensor ke aplikasi',
+      assignee: 'Ryan Anggara Deki',
+      dueLabel: '15 Okt 2026',
+      status: WorkspaceTaskStatus.todo,
+    ),
+    WorkspaceTask(
+      title: 'Menyiapkan bahan presentasi proyek',
+      assignee: 'Nadia Putri',
+      dueLabel: '18 Okt 2026',
+      status: WorkspaceTaskStatus.todo,
+    ),
+  ],
+};
+
+const samplePortfolioItems = [
+  PortfolioItem(
+    owner: 'Ryan Anggara Deki',
+    title: 'Aplikasi Jadwal Kelas',
+    category: 'Mobile Development',
+    description:
+        'Aplikasi Flutter untuk membantu siswa melihat jadwal dan pengingat kelas.',
+    year: '2026',
+    icon: Icons.phone_android_rounded,
+    color: Color(0xFF087E8B),
+  ),
+  PortfolioItem(
+    owner: 'Ryan Anggara Deki',
+    title: 'Desain Ulang Perpustakaan Digital',
+    category: 'UI/UX',
+    description:
+        'Membuat prototipe antarmuka peminjaman buku yang mudah digunakan.',
+    year: '2025',
+    icon: Icons.design_services_outlined,
+    color: Color(0xFFC46A3A),
+  ),
+  PortfolioItem(
+    owner: 'Nadia Putri',
+    title: 'Inovasi Teknologi Lingkungan',
+    category: 'Prestasi · Tingkat Provinsi',
+    description:
+        'Merancang sistem pemantauan lingkungan untuk kompetisi sains pelajar.',
+    year: '2025',
+    icon: Icons.emoji_events_outlined,
+    color: Color(0xFF536B45),
+  ),
+  PortfolioItem(
+    owner: 'Rizky Ramadhan',
+    title: 'Peta Cerita Sejarah Lokal',
+    category: 'Riset & Data',
+    description:
+        'Mengumpulkan cerita sejarah lokal dan menyajikannya dalam peta interaktif.',
+    year: '2025',
+    icon: Icons.map_outlined,
+    color: Color(0xFF6657A5),
   ),
 ];
