@@ -29,4 +29,27 @@ class WorkspaceTask {
       status: status ?? this.status,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'assignee': assignee,
+    'dueLabel': dueLabel,
+    'status': status.name,
+  };
+
+  /// Membaca tugas dari database; `null` bila datanya tidak lengkap atau rusak.
+  static WorkspaceTask? tryFromJson(Map<String, dynamic> json) {
+    try {
+      return WorkspaceTask(
+        title: json['title'] as String,
+        assignee: json['assignee'] as String,
+        dueLabel: json['dueLabel'] as String,
+        status: WorkspaceTaskStatus.values.byName(json['status'] as String),
+      );
+    } on TypeError {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
 }

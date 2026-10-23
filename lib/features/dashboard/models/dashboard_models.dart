@@ -68,6 +68,47 @@ class ProjectListing {
       reviewNote: clearReviewNote ? null : reviewNote ?? this.reviewNote,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'leader': leader,
+    'event': event,
+    'description': description,
+    'skills': skills,
+    'teacherName': teacherName,
+    'statusAcc': statusAcc,
+    'recruitmentOpen': recruitmentOpen,
+    'difficulty': difficulty.name,
+    'weeklyHours': weeklyHours,
+    'firstStep': firstStep,
+    'reviewNote': reviewNote,
+  };
+
+  /// Membaca proyek dari database; `null` bila datanya tidak lengkap atau rusak.
+  static ProjectListing? tryFromJson(Map<String, dynamic> json) {
+    try {
+      return ProjectListing(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        leader: json['leader'] as String,
+        event: json['event'] as String,
+        description: json['description'] as String,
+        skills: List<String>.unmodifiable(json['skills'] as List),
+        teacherName: json['teacherName'] as String,
+        statusAcc: json['statusAcc'] as String,
+        recruitmentOpen: json['recruitmentOpen'] as bool,
+        difficulty: ProjectDifficulty.values.byName(json['difficulty'] as String),
+        weeklyHours: json['weeklyHours'] as int,
+        firstStep: json['firstStep'] as String,
+        reviewNote: json['reviewNote'] as String?,
+      );
+    } on TypeError {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
 }
 
 class SchoolAchievement {

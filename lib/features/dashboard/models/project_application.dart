@@ -37,6 +37,39 @@ class ProjectApplication {
       portfolioItems: portfolioItems,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'projectId': projectId,
+    'applicantName': applicantName,
+    'status': status.name,
+    'skills': skills,
+    'portfolioItems': [for (final item in portfolioItems) item.toJson()],
+  };
+
+  /// Membaca lamaran dari database; `null` bila datanya tidak lengkap atau rusak.
+  static ProjectApplication? tryFromJson(Map<String, dynamic> json) {
+    try {
+      return ProjectApplication(
+        id: json['id'] as String,
+        projectId: json['projectId'] as String,
+        applicantName: json['applicantName'] as String,
+        status: ProjectApplicationStatus.values.byName(json['status'] as String),
+        skills: List<String>.unmodifiable(json['skills'] as List),
+        portfolioItems: List.unmodifiable([
+          for (final item in json['portfolioItems'] as List)
+            if (item is Map)
+              if (PortfolioItem.tryFromJson(Map<String, dynamic>.from(item))
+                  case final PortfolioItem parsed)
+                parsed,
+        ]),
+      );
+    } on TypeError {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
 }
 
 enum WorkflowActionResult {
