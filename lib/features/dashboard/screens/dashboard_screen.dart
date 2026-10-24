@@ -411,8 +411,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       role: widget.role,
       studentName: _profile.name,
       items: [...completedContributions, ..._teamStore.portfolioItems],
-      onAddItem: (item) =>
-          _teamStore.addPortfolioItem(item.copyWith(owner: _profile.name)),
+      onAddItem: (item, image) => _teamStore.addPortfolioItem(
+        item.copyWith(owner: _profile.name),
+        image: image,
+      ),
+      imageFor: _teamStore.imageFor,
     );
   }
 

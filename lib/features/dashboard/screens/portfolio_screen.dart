@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/media/photo_picker.dart';
 import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../models/portfolio_item.dart';
@@ -13,6 +15,7 @@ class PortfolioScreen extends StatelessWidget {
     required this.studentName,
     required this.items,
     required this.onAddItem,
+    this.imageFor,
     super.key,
   });
 
@@ -20,7 +23,10 @@ class PortfolioScreen extends StatelessWidget {
   final UserRole role;
   final String studentName;
   final List<PortfolioItem> items;
-  final ValueChanged<PortfolioItem> onAddItem;
+  final void Function(PortfolioItem item, Uint8List? image) onAddItem;
+
+  /// Mengambil foto karya berdasarkan ID-nya.
+  final Uint8List? Function(String imageId)? imageFor;
 
   bool get _isTeacher => role == UserRole.teacher;
 
@@ -83,7 +89,11 @@ class PortfolioScreen extends StatelessWidget {
           return Column(
             children: visibleItems
                 .map(
-                  (item) => _PortfolioCard(item: item, showOwner: _isTeacher),
+                  (item) => _PortfolioCard(
+                    item: item,
+                    showOwner: _isTeacher,
+                    image: _imageOf(item),
+                  ),
                 )
                 .toList(),
           );
@@ -95,7 +105,11 @@ class PortfolioScreen extends StatelessWidget {
               .map(
                 (item) => SizedBox(
                   width: cardWidth,
-                  child: _PortfolioCard(item: item, showOwner: _isTeacher),
+                  child: _PortfolioCard(
+                    item: item,
+                    showOwner: _isTeacher,
+                    image: _imageOf(item),
+                  ),
                 ),
               )
               .toList(),
@@ -104,92 +118,128 @@ class PortfolioScreen extends StatelessWidget {
     );
   }
 
+  Uint8List? _imageOf(PortfolioItem item) {
+    final imageId = item.imageId;
+    return imageId == null ? null : imageFor?.call(imageId);
+  }
+
   Future<void> _showAddItemDialog(BuildContext context) async {
-    final item = await showDialog<PortfolioItem>(
+    final result = await showDialog<(PortfolioItem, Uint8List?)>(
       context: context,
       builder: (context) => _AddPortfolioItemDialog(studentName: studentName),
     );
-    if (item != null) onAddItem(item);
+    if (result != null) onAddItem(result.$1, result.$2);
   }
 }
 
 class _PortfolioCard extends StatelessWidget {
-  const _PortfolioCard({required this.item, required this.showOwner});
+  const _PortfolioCard({
+    required this.item,
+    required this.showOwner,
+    this.image,
+  });
 
   final PortfolioItem item;
   final bool showOwner;
+  final Uint8List? image;
 
   @override
   Widget build(BuildContext context) {
+    final image = this.image;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: item.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(item.icon, color: item.color, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showOwner) ...[
-                    Text(
-                      item.owner,
-                      style: const TextStyle(
-                        color: ProjectNexusColors.teal,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                  ],
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      color: ProjectNexusColors.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.description,
-                    style: const TextStyle(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (image != null)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.memory(
+                image,
+                key: Key('portfolio_image_${item.title}'),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (context, error, stackTrace) => const ColoredBox(
+                  color: ProjectNexusColors.field,
+                  child: Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
                       color: ProjectNexusColors.muted,
-                      fontSize: 13,
-                      height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: item.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(item.icon, color: item.color, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (item.isContribution)
-                        const StatusPill(
-                          label: 'Kontribusi tim',
-                          color: ProjectNexusColors.teal,
+                      if (showOwner) ...[
+                        Text(
+                          item.owner,
+                          style: const TextStyle(
+                            color: ProjectNexusColors.teal,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      SkillTag(item.category),
-                      SkillTag(item.year),
+                        const SizedBox(height: 2),
+                      ],
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.description,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.muted,
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          if (item.isContribution)
+                            const StatusPill(
+                              label: 'Kontribusi tim',
+                              color: ProjectNexusColors.teal,
+                            ),
+                          SkillTag(item.category),
+                          SkillTag(item.year),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -235,6 +285,9 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _categoryController = TextEditingController();
+  Uint8List? _photo;
+  String? _photoError;
+  bool _pickingPhoto = false;
 
   @override
   void dispose() {
@@ -280,6 +333,14 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
                 ),
                 validator: _required,
               ),
+              const SizedBox(height: 14),
+              _PhotoField(
+                photo: _photo,
+                error: _photoError,
+                busy: _pickingPhoto,
+                onPick: _pickPhoto,
+                onRemove: () => setState(() => _photo = null),
+              ),
             ],
           ),
         ),
@@ -292,8 +353,7 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
         FilledButton(
           onPressed: () {
             if (!_formKey.currentState!.validate()) return;
-            Navigator.pop(
-              context,
+            Navigator.pop(context, (
               PortfolioItem(
                 owner: widget.studentName,
                 title: _titleController.text.trim(),
@@ -303,7 +363,8 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
                 icon: Icons.auto_awesome_outlined,
                 color: ProjectNexusColors.teal,
               ),
-            );
+              _photo,
+            ));
           },
           child: const Text('Simpan karya'),
         ),
@@ -311,10 +372,126 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
     );
   }
 
+  Future<void> _pickPhoto(PhotoSource source) async {
+    setState(() {
+      _pickingPhoto = true;
+      _photoError = null;
+    });
+    try {
+      final photo = await PhotoPicker.instance.pick(source);
+      if (!mounted || photo == null) return;
+      if (photo.length > PhotoPicker.maxBytes) {
+        setState(() => _photoError = 'Ukuran foto maksimal 2 MB.');
+        return;
+      }
+      setState(() => _photo = photo);
+    } on Exception {
+      // Misalnya izin kamera ditolak atau perangkat tidak memiliki kamera.
+      if (mounted) {
+        setState(
+          () =>
+              _photoError = 'Foto tidak dapat diambil. Coba pilih dari galeri.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pickingPhoto = false);
+    }
+  }
+
   String? _required(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Bagian ini wajib diisi.';
     }
     return null;
+  }
+}
+
+/// Pilihan foto karya: tombol kamera dan galeri, atau pratinjau foto terpilih.
+class _PhotoField extends StatelessWidget {
+  const _PhotoField({
+    required this.photo,
+    required this.error,
+    required this.busy,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final Uint8List? photo;
+  final String? error;
+  final bool busy;
+  final ValueChanged<PhotoSource> onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = this.photo;
+    final error = this.error;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Foto karya (opsional)',
+          style: TextStyle(
+            color: ProjectNexusColors.ink,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (photo != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.memory(
+                photo,
+                key: const Key('portfolio_photo_preview'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              key: const Key('portfolio_photo_remove'),
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: const Text('Hapus foto'),
+            ),
+          ),
+        ] else
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('portfolio_photo_camera'),
+                  onPressed: busy ? null : () => onPick(PhotoSource.camera),
+                  icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                  label: const Text('Kamera'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('portfolio_photo_gallery'),
+                  onPressed: busy ? null : () => onPick(PhotoSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: const Text('Galeri'),
+                ),
+              ),
+            ],
+          ),
+        if (error != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            error,
+            style: const TextStyle(
+              color: ProjectNexusColors.error,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
