@@ -16,6 +16,7 @@ class TeamWorkStore extends ChangeNotifier {
   final LocalDatabase? database;
   final Map<String, List<WorkspaceTask>> _tasks = {};
   final List<PortfolioItem> _portfolioItems = [];
+  final Map<String, Uint8List> _images = {};
   Future<void> _lastSave = Future.value();
 
   /// Selesai ketika penyimpanan terakhir ke database sudah tertulis.
@@ -24,10 +25,9 @@ class TeamWorkStore extends ChangeNotifier {
   List<PortfolioItem> get portfolioItems => List.unmodifiable(_portfolioItems);
 
   /// Pasangan (ID proyek, daftar tugas) untuk seluruh proyek yang memiliki tugas.
-  Iterable<MapEntry<String, List<WorkspaceTask>>> get taskEntries =>
-      _tasks.entries.map(
-        (entry) => MapEntry(entry.key, List.unmodifiable(entry.value)),
-      );
+  Iterable<MapEntry<String, List<WorkspaceTask>>> get taskEntries => _tasks
+      .entries
+      .map((entry) => MapEntry(entry.key, List.unmodifiable(entry.value)));
 
   bool hasTasks(String projectId) => _tasks.containsKey(projectId);
 
@@ -51,9 +51,34 @@ class TeamWorkStore extends ChangeNotifier {
     _commit();
   }
 
-  void addPortfolioItem(PortfolioItem item) {
-    _portfolioItems.insert(0, item);
+  /// Menambah karya. Bila [image] diisi, foto disimpan di database lokal dan
+  /// karya menyimpan ID fotonya.
+  void addPortfolioItem(PortfolioItem item, {Uint8List? image}) {
+    var saved = item;
+    Future<void>? imageWrite;
+    if (image != null) {
+      final imageId = 'img-${DateTime.now().microsecondsSinceEpoch}';
+      _images[imageId] = image;
+      saved = item.copyWith(imageId: imageId);
+      imageWrite = database?.writeBytes(
+        LocalDatabase.portfolioImageKey(imageId),
+        image,
+      );
+    }
+    _portfolioItems.insert(0, saved);
     _commit();
+    if (imageWrite != null) _lastSave = Future.wait([_lastSave, imageWrite]);
+  }
+
+  /// Foto karya berdasarkan ID; dibaca dari database sekali lalu disimpan di memori.
+  Uint8List? imageFor(String imageId) {
+    final cached = _images[imageId];
+    if (cached != null) return cached;
+    final stored = database?.readBytes(
+      LocalDatabase.portfolioImageKey(imageId),
+    );
+    if (stored != null) _images[imageId] = stored;
+    return stored;
   }
 
   void _restore() {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:hive_ce/hive_ce.dart';
 
@@ -45,6 +46,9 @@ class LocalDatabase {
   static const portfolioItemsKey = 'portfolio_items';
   static const studentAccountsKey = 'student_accounts';
 
+  /// Setiap foto karya disimpan pada kuncinya sendiri agar daftar karya tetap ringan.
+  static String portfolioImageKey(String imageId) => 'portfolio_image:$imageId';
+
   final KeyValueStore _store;
 
   /// Membuka database Hive. `Hive.initFlutter()` (aplikasi) atau `Hive.init()`
@@ -73,6 +77,20 @@ class LocalDatabase {
 
   Future<void> writeList(String key, List<Map<String, dynamic>> items) =>
       _store.write(key, jsonEncode(items));
+
+  /// Membaca data biner (misalnya foto); `null` bila belum ada atau rusak.
+  Uint8List? readBytes(String key) {
+    final raw = _store.read(key);
+    if (raw == null) return null;
+    try {
+      return base64Decode(raw);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<void> writeBytes(String key, Uint8List bytes) =>
+      _store.write(key, base64Encode(bytes));
 }
 
 /// Mengubah koleksi JSON menjadi objek; entri yang tidak valid dilewati.

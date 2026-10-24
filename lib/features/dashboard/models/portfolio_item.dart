@@ -21,6 +21,7 @@ class PortfolioItem {
     required this.icon,
     required this.color,
     this.isContribution = false,
+    this.imageId,
   });
 
   final String owner;
@@ -32,7 +33,14 @@ class PortfolioItem {
   final Color color;
   final bool isContribution;
 
-  PortfolioItem copyWith({String? owner, bool? isContribution}) {
+  /// ID foto karya di database lokal; `null` bila karya tidak memiliki foto.
+  final String? imageId;
+
+  PortfolioItem copyWith({
+    String? owner,
+    bool? isContribution,
+    String? imageId,
+  }) {
     return PortfolioItem(
       owner: owner ?? this.owner,
       title: title,
@@ -42,6 +50,7 @@ class PortfolioItem {
       icon: icon,
       color: color,
       isContribution: isContribution ?? this.isContribution,
+      imageId: imageId ?? this.imageId,
     );
   }
 
@@ -59,6 +68,7 @@ class PortfolioItem {
         .key,
     'color': color.toARGB32(),
     'isContribution': isContribution,
+    'imageId': imageId,
   };
 
   /// Membaca karya dari database; `null` bila datanya tidak lengkap atau rusak.
@@ -73,6 +83,7 @@ class PortfolioItem {
         icon: portfolioIcons[json['icon']] ?? Icons.auto_awesome_outlined,
         color: Color(json['color'] as int),
         isContribution: json['isContribution'] as bool? ?? false,
+        imageId: json['imageId'] as String?,
       );
     } on TypeError {
       return null;
