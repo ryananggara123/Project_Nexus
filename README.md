@@ -27,6 +27,7 @@ Siswa yang ingin ikut lomba atau membuat proyek sering kesulitan menemukan rekan
 | Lamaran & seleksi anggota | Siswa melamar sekali per proyek. Ketua menerima atau menolak pelamar dan dapat menutup rekrutmen. Jumlah anggota tidak dibatasi. |
 | Workspace tim | Papan tugas To-Do, In Progress, dan Done yang hanya dapat dibuka anggota tim dan guru pendamping. |
 | Portofolio & lencana | Tugas yang selesai tercatat otomatis sebagai kontribusi dan diberi lencana apresiasi. |
+| Foto karya | Karya portofolio dapat diberi foto dari kamera atau galeri (pemilih berkas di browser). Foto diperkecil, dibatasi 2 MB, dan disimpan di database lokal. |
 | Katalog prestasi & profil | Etalase prestasi sekolah serta profil yang dapat diedit (keahlian, minat, waktu luang). |
 | Penyimpanan lokal | Proyek, lamaran, tugas Workspace, portofolio, dan akun siswa tersimpan di database lokal sehingga tetap ada setelah aplikasi ditutup. Kata sandi disimpan sebagai hash SHA-256. |
 
@@ -63,6 +64,7 @@ Tampilan pada layar lebar (navigasi samping):
 - **ChangeNotifier** untuk state alur proyek dan lamaran (`ProjectWorkflowStore`)
 - **Hive CE** sebagai database lokal (IndexedDB di browser, berkas di Android)
 - **crypto** (SHA-256) untuk hash kata sandi akun siswa
+- **image_picker** untuk mengambil foto karya dari kamera atau galeri
 - **shared_preferences** untuk sesi login dan preferensi rekomendasi
 - **flutter_test** untuk unit test dan widget test
 
@@ -72,6 +74,7 @@ Tampilan pada layar lebar (navigasi samping):
 lib/
 ├── main.dart                     # titik masuk aplikasi
 ├── core/
+│   ├── media/                    # pengambil foto kamera/galeri (PhotoPicker)
 │   ├── storage/                  # database lokal (LocalDatabase)
 │   └── theme/                    # warna dan tema terpusat (AppTheme)
 └── features/
@@ -82,7 +85,7 @@ lib/
         ├── models/               # model, aturan alur proyek, rekomendasi
         ├── screens/
         └── widgets/
-test/                             # 17 unit test dan 22 widget test
+test/                             # 19 unit test dan 25 widget test
 docs/screenshots/                 # tangkapan layar untuk README
 ```
 
@@ -117,13 +120,13 @@ flutter run
 
 ```bash
 flutter analyze   # analisis statis: No issues found
-flutter test      # 39 pengujian: All tests passed
+flutter test      # 44 pengujian: All tests passed
 ```
 
 ## Batasan prototipe
 
 - Data tersimpan di database lokal pada masing-masing perangkat atau browser, sehingga belum tersinkron antarperangkat.
-- Autentikasi masih lokal; Firebase belum diintegrasikan sehingga belum ada unggah berkas portofolio.
+- Autentikasi masih lokal dan Firebase belum diintegrasikan, sehingga foto karya baru tersimpan di perangkat masing-masing.
 - Prototipe ini belum ditujukan untuk menyimpan data siswa yang sensitif.
 
 ## Progres pasca-UTS
@@ -131,13 +134,13 @@ flutter test      # 39 pengujian: All tests passed
 | Minggu | Pekerjaan | Status |
 |---|---|---|
 | 1 | Database lokal (Hive CE) untuk proyek, lamaran, tugas Workspace, portofolio, dan akun siswa, beserta hash kata sandi dan pengujian persistensi | Selesai |
+| 2 | Unggah foto karya portofolio dari kamera atau galeri, disimpan di database lokal | Selesai |
 
 ## Rencana menuju UAS
 
-1. Integrasi backend sesuai PRD: Firebase Authentication, Cloud Firestore untuk proyek, lamaran, dan tugas, serta Firebase Storage untuk berkas portofolio. Database lokal dipertahankan sebagai cache saat offline.
-2. Pemanfaatan sensor perangkat: kamera untuk memotret karya atau sertifikat yang diunggah ke portofolio.
-3. Notifikasi push untuk guru (draf baru) dan ketua proyek (pelamar baru).
-4. Pengujian pada emulator dan perangkat Android fisik.
+1. Integrasi backend sesuai PRD: Firebase Authentication, Cloud Firestore untuk proyek, lamaran, dan tugas, serta Firebase Storage untuk foto karya. Database lokal dipertahankan sebagai cache saat offline.
+2. Notifikasi push untuk guru (draf baru) dan ketua proyek (pelamar baru).
+3. Pengujian pada emulator dan perangkat Android fisik, termasuk kamera.
 
 ## Penggunaan AI
 

@@ -17,6 +17,7 @@ Dokumen ini menjelaskan secara terbuka bagaimana asisten kecerdasan buatan (AI) 
 | GitHub Copilot Chat (mode agent di VS Code) | Chat di editor | 27–28 September 2026 | Membuat struktur awal folder `lib/` berdasarkan PRD dan SRD, halaman login dua peran, serta panduan menjalankan aplikasi di Chrome dan melakukan commit ke GitHub. |
 | GitHub Copilot CLI (agent) | Agent di terminal VS Code | 29 September – 15 Oktober 2026 | Implementasi sebagian besar fitur: pengajuan dan persetujuan proyek, lamaran dan seleksi anggota, Workspace, portofolio, profil, fitur ramah pemula dan rekomendasi, pengujian, serta pembuatan commit per fitur. |
 | Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 19–21 Oktober 2026 | Desain ulang tata letak seluruh layar, perbaikan bug pesan notifikasi dan tampilan yang meluap, penyusunan laporan, README, dan draf dokumen ini. |
+| Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 24 Oktober 2026 (Minggu 2 pasca-UTS) | Implementasi unggah foto karya dari kamera/galeri, penyimpanan foto di database lokal, pengujian, serta penyusunan laporan mingguan. |
 | Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 23 Oktober 2026 (Minggu 1 pasca-UTS) | Implementasi database lokal Hive, hash kata sandi, pemindahan data Workspace dan portofolio ke penyimpanan tersendiri, pengujian persistensi, serta penyusunan laporan mingguan. |
 
 ## 2. Pembagian peran
@@ -33,6 +34,7 @@ Kode program Dart pada folder `lib/` dan `test/` dihasilkan oleh agen AI berdasa
 | Ramah pemula, rekomendasi, lencana (`project_recommender.dart`, `contribution_recognition.dart`) | Copilot | Membawa masukan dosen agar aplikasi mendorong siswa yang belum berani ikut lomba; memilih untuk memulai dari fitur proyek pemula. |
 | Tema dan tata letak (`core/theme/`, `dashboard_header.dart`) | Copilot, kemudian Claude | Menilai tampilan awal belum rapi; menetapkan arah desain formal, minimalis, dan tetap bernuansa teal; meminta header dan kartu hero tetap ada di setiap menu (lihat Studi Kasus 2). |
 | Database lokal (`lib/core/storage/`, `team_work_store.dart`, penyimpanan di `project_workflow_store.dart`) | Claude | Memilih fitur penyimpanan lokal sebagai target Minggu 1 dari rencana menuju UAS, agar data tidak hilang saat aplikasi ditutup. |
+| Foto karya (`lib/core/media/`, dialog dan kartu di `portfolio_screen.dart`) | Claude | Memilih mendahulukan fitur foto karya pada Minggu 2 dan menggeser integrasi Firebase ke Minggu 3, karena Firebase memerlukan penyiapan akun terlebih dahulu. |
 | Pengujian (`test/`) | Copilot dan Claude | Menjalankan pengujian dan memeriksa hasilnya sebelum perubahan di-commit. |
 | Riwayat commit | Agen AI atas perintah saya | Meminta commit dibuat bertahap dan terpisah per fitur, serta meminta agar tidak melakukan push tanpa izin. |
 
