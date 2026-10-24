@@ -152,8 +152,7 @@ const samplePortfolioItems = [
     owner: 'Ryan Anggara Deki',
     title: 'Aplikasi Jadwal Kelas',
     category: 'Mobile Development',
-    description:
-        'Aplikasi Flutter untuk membantu siswa melihat jadwal dan pengingat kelas.',
+    description: 'Aplikasi Flutter untuk membantu siswa melihat jadwal dan pengingat kelas.',
     year: '2026',
     icon: Icons.phone_android_rounded,
     color: Color(0xFF087E8B),
@@ -182,8 +181,7 @@ const samplePortfolioItems = [
     owner: 'Rizky Ramadhan',
     title: 'Peta Cerita Sejarah Lokal',
     category: 'Riset & Data',
-    description:
-        'Mengumpulkan cerita sejarah lokal dan menyajikannya dalam peta interaktif.',
+    description: 'Mengumpulkan cerita sejarah lokal dan menyajikannya dalam peta interaktif.',
     year: '2025',
     icon: Icons.map_outlined,
     color: Color(0xFF6657A5),

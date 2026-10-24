@@ -38,7 +38,9 @@ class StudentDemoAccount {
   /// SHA-256 dari kata sandi dengan NIM sebagai salt, agar dua akun dengan
   /// kata sandi yang sama tetap menghasilkan hash berbeda.
   static String hashPassword(String nim, String password) => sha256
-      .convert(utf8.encode('projectnexus:${nim.trim().toLowerCase()}:$password'))
+      .convert(
+        utf8.encode('projectnexus:${nim.trim().toLowerCase()}:$password'),
+      )
       .toString();
 
   bool verifyPassword(String password) =>

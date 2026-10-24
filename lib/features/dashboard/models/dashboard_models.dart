@@ -98,7 +98,9 @@ class ProjectListing {
         teacherName: json['teacherName'] as String,
         statusAcc: json['statusAcc'] as String,
         recruitmentOpen: json['recruitmentOpen'] as bool,
-        difficulty: ProjectDifficulty.values.byName(json['difficulty'] as String),
+        difficulty: ProjectDifficulty.values.byName(
+          json['difficulty'] as String,
+        ),
         weeklyHours: json['weeklyHours'] as int,
         firstStep: json['firstStep'] as String,
         reviewNote: json['reviewNote'] as String?,

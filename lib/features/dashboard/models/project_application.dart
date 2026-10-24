@@ -54,7 +54,9 @@ class ProjectApplication {
         id: json['id'] as String,
         projectId: json['projectId'] as String,
         applicantName: json['applicantName'] as String,
-        status: ProjectApplicationStatus.values.byName(json['status'] as String),
+        status: ProjectApplicationStatus.values.byName(
+          json['status'] as String,
+        ),
         skills: List<String>.unmodifiable(json['skills'] as List),
         portfolioItems: List.unmodifiable([
           for (final item in json['portfolioItems'] as List)

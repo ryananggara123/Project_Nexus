@@ -43,7 +43,9 @@ class ProjectWorkflowStore extends ChangeNotifier {
     );
     // Lanjutkan penomoran agar ID lamaran baru tidak bentrok dengan yang tersimpan.
     for (final application in _applications) {
-      final number = int.tryParse(application.id.replaceFirst('application-', ''));
+      final number = int.tryParse(
+        application.id.replaceFirst('application-', ''),
+      );
       if (number != null && number > _nextApplicationId) {
         _nextApplicationId = number;
       }
