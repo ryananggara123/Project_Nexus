@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>ProjectNexus memakai kamera untuk memotret karya yang ditambahkan ke portofolio.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ProjectNexus membuka galeri untuk memilih foto karya yang ditambahkan ke portofolio.</string>
 </dict>
 </plist>
