@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -101,46 +102,87 @@ void main() {
       expect(ids.toSet(), hasLength(ids.length));
     });
 
-    test('workspace tasks and portfolio survive reopening the database', () async {
+    test(
+      'workspace tasks and portfolio survive reopening the database',
+      () async {
+        var store = TeamWorkStore(database: await LocalDatabase.openHive());
+        final firstTask = store.tasksFor('sample-water-iot').first;
+        store.updateTaskStatus(
+          'sample-water-iot',
+          firstTask,
+          WorkspaceTaskStatus.inProgress,
+        );
+        store.addTask(
+          'sample-water-iot',
+          const WorkspaceTask(
+            title: 'Kalibrasi sensor pH',
+            assignee: 'Ryan Anggara Deki',
+            dueLabel: '30 Okt 2026',
+            status: WorkspaceTaskStatus.todo,
+          ),
+        );
+        store.addPortfolioItem(
+          const PortfolioItem(
+            owner: 'Ryan Anggara Deki',
+            title: 'Juara 2 Lomba Aplikasi',
+            category: 'Prestasi',
+            description: 'Aplikasi pemantau air.',
+            year: '2026',
+            icon: Icons.emoji_events_outlined,
+            color: Color(0xFF087E8B),
+          ),
+        );
+        await store.saved;
+        await Hive.close();
+
+        store = TeamWorkStore(database: await LocalDatabase.openHive());
+        final tasks = store.tasksFor('sample-water-iot');
+        expect(tasks.first.status, WorkspaceTaskStatus.inProgress);
+        expect(
+          tasks.map((task) => task.title),
+          contains('Kalibrasi sensor pH'),
+        );
+        final item = store.portfolioItems.first;
+        expect(item.title, 'Juara 2 Lomba Aplikasi');
+        expect(item.icon, Icons.emoji_events_outlined);
+        expect(item.color, const Color(0xFF087E8B));
+      },
+    );
+
+    test('portfolio photos survive reopening the database', () async {
+      final photo = Uint8List.fromList(List.generate(2048, (i) => i % 256));
       var store = TeamWorkStore(database: await LocalDatabase.openHive());
-      final firstTask = store.tasksFor('sample-water-iot').first;
-      store.updateTaskStatus(
-        'sample-water-iot',
-        firstTask,
-        WorkspaceTaskStatus.inProgress,
-      );
-      store.addTask(
-        'sample-water-iot',
-        const WorkspaceTask(
-          title: 'Kalibrasi sensor pH',
-          assignee: 'Ryan Anggara Deki',
-          dueLabel: '30 Okt 2026',
-          status: WorkspaceTaskStatus.todo,
-        ),
-      );
       store.addPortfolioItem(
         const PortfolioItem(
           owner: 'Ryan Anggara Deki',
-          title: 'Juara 2 Lomba Aplikasi',
-          category: 'Prestasi',
-          description: 'Aplikasi pemantau air.',
+          title: 'Poster Lomba Inovasi',
+          category: 'Desain',
+          description: 'Poster untuk lomba inovasi sekolah.',
           year: '2026',
-          icon: Icons.emoji_events_outlined,
-          color: Color(0xFF087E8B),
+          icon: Icons.design_services_outlined,
+          color: Color(0xFFC46A3A),
         ),
+        image: photo,
       );
       await store.saved;
       await Hive.close();
 
       store = TeamWorkStore(database: await LocalDatabase.openHive());
-      final tasks = store.tasksFor('sample-water-iot');
-      expect(tasks.first.status, WorkspaceTaskStatus.inProgress);
-      expect(tasks.map((task) => task.title), contains('Kalibrasi sensor pH'));
       final item = store.portfolioItems.first;
-      expect(item.title, 'Juara 2 Lomba Aplikasi');
-      expect(item.icon, Icons.emoji_events_outlined);
-      expect(item.color, const Color(0xFF087E8B));
+      expect(item.imageId, isNotNull);
+      expect(store.imageFor(item.imageId!), photo);
     });
+  });
+
+  test('corrupt photo data is ignored instead of crashing', () async {
+    final memory = MemoryKeyValueStore();
+    await memory.write(
+      LocalDatabase.portfolioImageKey('img-1'),
+      '%%% bukan base64',
+    );
+    final store = TeamWorkStore(database: LocalDatabase(memory));
+
+    expect(store.imageFor('img-1'), isNull);
   });
 
   test('student accounts are stored with a hashed password', () {
