@@ -17,6 +17,7 @@ Dokumen ini menjelaskan secara terbuka bagaimana asisten kecerdasan buatan (AI) 
 | GitHub Copilot Chat (mode agent di VS Code) | Chat di editor | 27–28 September 2026 | Membuat struktur awal folder `lib/` berdasarkan PRD dan SRD, halaman login dua peran, serta panduan menjalankan aplikasi di Chrome dan melakukan commit ke GitHub. |
 | GitHub Copilot CLI (agent) | Agent di terminal VS Code | 29 September – 15 Oktober 2026 | Implementasi sebagian besar fitur: pengajuan dan persetujuan proyek, lamaran dan seleksi anggota, Workspace, portofolio, profil, fitur ramah pemula dan rekomendasi, pengujian, serta pembuatan commit per fitur. |
 | Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 19–21 Oktober 2026 | Desain ulang tata letak seluruh layar, perbaikan bug pesan notifikasi dan tampilan yang meluap, penyusunan laporan, README, dan draf dokumen ini. |
+| Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 27 Oktober 2026 (Minggu 3 pasca-UTS) | Integrasi Firebase Authentication dan Cloud Firestore beserta aturan keamanan, pusat notifikasi, fitur edit dan hapus karya serta tugas, pengujian, pengujian di Chrome dengan dua akun, serta penyusunan laporan mingguan. |
 | Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 24 Oktober 2026 (Minggu 2 pasca-UTS) | Implementasi unggah foto karya dari kamera/galeri, penyimpanan foto di database lokal, pengujian, serta penyusunan laporan mingguan. |
 | Claude Code (model Claude Opus 5.5) di VS Code | Agent di editor | 23 Oktober 2026 (Minggu 1 pasca-UTS) | Implementasi database lokal Hive, hash kata sandi, pemindahan data Workspace dan portofolio ke penyimpanan tersendiri, pengujian persistensi, serta penyusunan laporan mingguan. |
 
@@ -35,6 +36,9 @@ Kode program Dart pada folder `lib/` dan `test/` dihasilkan oleh agen AI berdasa
 | Tema dan tata letak (`core/theme/`, `dashboard_header.dart`) | Copilot, kemudian Claude | Menilai tampilan awal belum rapi; menetapkan arah desain formal, minimalis, dan tetap bernuansa teal; meminta header dan kartu hero tetap ada di setiap menu (lihat Studi Kasus 2). |
 | Database lokal (`lib/core/storage/`, `team_work_store.dart`, penyimpanan di `project_workflow_store.dart`) | Claude | Memilih fitur penyimpanan lokal sebagai target Minggu 1 dari rencana menuju UAS, agar data tidak hilang saat aplikasi ditutup. |
 | Foto karya (`lib/core/media/`, dialog dan kartu di `portfolio_screen.dart`) | Claude | Memilih mendahulukan fitur foto karya pada Minggu 2 dan menggeser integrasi Firebase ke Minggu 3, karena Firebase memerlukan penyiapan akun terlebih dahulu. |
+| Firebase dan sinkronisasi realtime (`lib/core/cloud/`, `lib/features/auth/data/`, `firestore.rules`) | Claude | Membuat proyek Firebase, mengaktifkan login Email/Password dan Cloud Firestore (lokasi Jakarta), serta login Firebase CLI di laptop sendiri; meminta progres Minggu 3 berisi lebih dari satu pekerjaan yang nyata. |
+| Pusat notifikasi (`lib/features/notifications/`) | Claude | Menyetujui usulan notifikasi di dalam aplikasi untuk keputusan guru, pelamar baru, dan keputusan lamaran sebagai bagian progres Minggu 3. |
+| Edit dan hapus karya serta tugas (`portfolio_screen.dart`, `workspace_screen.dart`, `team_work_store.dart`) | Claude | Menyetujui usulan melengkapi operasi CRUD sebagai pekerjaan ketiga Minggu 3. |
 | Pengujian (`test/`) | Copilot dan Claude | Menjalankan pengujian dan memeriksa hasilnya sebelum perubahan di-commit. |
 | Riwayat commit | Agen AI atas perintah saya | Meminta commit dibuat bertahap dan terpisah per fitur, serta meminta agar tidak melakukan push tanpa izin. |
 
@@ -93,6 +97,7 @@ Aturan ini dibuktikan oleh unit test `team size is not capped and leader can clo
 | Pesan notifikasi (snackbar) menumpuk dan terbawa ke akun lain, sehingga pesan "Proyek disetujui" tertahan dan satu widget test selalu gagal. | `flutter test` menunjukkan tes `accepted applicant gets access to project workspace` gagal. | Pesan baru kini menggantikan pesan lama dan semua pesan dibersihkan saat keluar akun. Seluruh 33 tes lulus. |
 | Kartu "Proyek aktif" di Workspace selalu menampilkan judul yang sama karena judulnya ditulis tetap di kode. | Ditemukan saat meninjau kode Workspace pada proses desain ulang. | Kartu dihapus; judul proyek yang dipilih ditampilkan pada hero Workspace. |
 | Tombol Tolak/Terima pada dialog kelola pelamar meluap di layar kecil. | Widget test melaporkan galat overflow pada lebar layar 390 piksel. | Baris tombol diganti `Wrap` agar tombol dapat turun baris. |
+| ID lamaran contoh (`sample-water-ryan`) tidak mengikuti format ID yang dipakai aturan keamanan Workspace, sehingga anggota tim akan ditolak saat mengubah tugas. | Ditemukan saat memeriksa isi Firestore setelah uji coba pertama di Chrome, sebelum aturan keamanan diaktifkan. | ID contoh diganti ke format `proyek__nama`, dokumen di Firestore dipindahkan, dan ditambah tes agar format ID selalu sesuai. |
 
 ## 5. Pernyataan
 

@@ -19,17 +19,20 @@ Siswa yang ingin ikut lomba atau membuat proyek sering kesulitan menemukan rekan
 
 | Fitur | Keterangan |
 |---|---|
-| Login dua peran | Siswa masuk dengan email, NIM, atau username; guru dengan email sekolah. Siswa baru dapat mendaftar akun. |
+| Login dua peran (Firebase) | Akun disimpan di Firebase Authentication. Siswa masuk dengan email, NIM, atau username; guru dengan email sekolah. Siswa baru dapat mendaftar, sedangkan akun guru dibuat administrator. Sesi login tetap tersimpan setelah aplikasi ditutup. |
 | Pengajuan proyek | Siswa mengajukan draf proyek dan memilih guru pendamping. Draf berstatus *menunggu tinjauan*. |
 | Persetujuan guru (ACC) | Hanya guru yang dipilih yang dapat menyetujui atau menolak draf disertai masukan. Siswa dapat merevisi lalu mengirim ulang. |
 | Feed rekrutmen | Hanya proyek yang disetujui dan rekrutmennya terbuka yang tampil. Tersedia pencarian dan filter keahlian. |
 | Rekomendasi & ramah pemula | Feed diurutkan berdasarkan kecocokan keahlian, minat, dan waktu luang. Proyek pemula diberi label, langkah pertama, dan perkiraan jam per minggu. |
 | Lamaran & seleksi anggota | Siswa melamar sekali per proyek. Ketua menerima atau menolak pelamar dan dapat menutup rekrutmen. Jumlah anggota tidak dibatasi. |
-| Workspace tim | Papan tugas To-Do, In Progress, dan Done yang hanya dapat dibuka anggota tim dan guru pendamping. |
+| Workspace tim | Papan tugas To-Do, In Progress, dan Done yang hanya dapat dibuka anggota tim dan guru pendamping. Tugas dapat ditambah, dipindah, diedit, dan dihapus. |
 | Portofolio & lencana | Tugas yang selesai tercatat otomatis sebagai kontribusi dan diberi lencana apresiasi. |
-| Foto karya | Karya portofolio dapat diberi foto dari kamera atau galeri (pemilih berkas di browser). Foto diperkecil, dibatasi 2 MB, dan disimpan di database lokal. |
+| Foto karya | Karya portofolio dapat diberi foto dari kamera atau galeri (pemilih berkas di browser). Foto diperkecil, dibatasi 2 MB, dan disimpan di database lokal. Karya milik sendiri dapat diedit (termasuk mengganti atau menghapus foto) dan dihapus. |
 | Katalog prestasi & profil | Etalase prestasi sekolah serta profil yang dapat diedit (keahlian, minat, waktu luang). |
-| Penyimpanan lokal | Proyek, lamaran, tugas Workspace, portofolio, dan akun siswa tersimpan di database lokal sehingga tetap ada setelah aplikasi ditutup. Kata sandi disimpan sebagai hash SHA-256. |
+| Sinkronisasi realtime | Proyek, lamaran, tugas Workspace, dan notifikasi disimpan di Cloud Firestore dan langsung muncul di perangkat lain tanpa memuat ulang. Database lokal (Hive) tetap menyimpan salinan sebagai cache offline. |
+| Pusat notifikasi | Lonceng dengan lencana jumlah belum dibaca. Guru diberi tahu saat ada draf atau revisi baru; siswa saat proyeknya disetujui atau ditolak, ada pelamar baru, lamarannya diputuskan, atau mendapat tugas baru. Notifikasi yang tiba saat aplikasi terbuka juga muncul sebagai pesan singkat. |
+| Aturan keamanan | `firestore.rules` membatasi akses sesuai peran: hanya pengguna yang masuk yang dapat membaca data, siswa tidak dapat menyetujui proyek atau mengubah perannya, dan notifikasi hanya dapat dibaca penerimanya. |
+| Mode lokal | Bila Firebase tidak tersedia (misalnya Windows desktop), aplikasi tetap berjalan dengan akun dan data di database lokal. Kata sandi akun lokal disimpan sebagai hash SHA-256. |
 
 ## Tangkapan layar
 
@@ -62,7 +65,9 @@ Tampilan pada layar lebar (navigasi samping):
 
 - **Flutter** dan **Dart** dengan widget Material 3
 - **ChangeNotifier** untuk state alur proyek dan lamaran (`ProjectWorkflowStore`)
-- **Hive CE** sebagai database lokal (IndexedDB di browser, berkas di Android)
+- **Firebase Authentication** untuk akun siswa dan guru
+- **Cloud Firestore** untuk data bersama yang tersinkron realtime, dilindungi `firestore.rules`
+- **Hive CE** sebagai database lokal dan cache offline (IndexedDB di browser, berkas di Android)
 - **crypto** (SHA-256) untuk hash kata sandi akun siswa
 - **image_picker** untuk mengambil foto karya dari kamera atau galeri
 - **shared_preferences** untuk sesi login dan preferensi rekomendasi
@@ -72,20 +77,25 @@ Tampilan pada layar lebar (navigasi samping):
 
 ```
 lib/
-├── main.dart                     # titik masuk aplikasi
+├── main.dart                     # titik masuk: membuka Hive dan menghubungkan Firebase
+├── firebase_options.dart         # konfigurasi Firebase (dibuat FlutterFire CLI)
 ├── core/
+│   ├── cloud/                    # CloudStore: Firestore dan versi memori untuk pengujian
 │   ├── media/                    # pengambil foto kamera/galeri (PhotoPicker)
 │   ├── storage/                  # database lokal (LocalDatabase)
 │   └── theme/                    # warna dan tema terpusat (AppTheme)
 └── features/
     ├── auth/                     # splash, login, registrasi, sesi (AuthGate)
+    │   ├── data/                 # layanan akun: lokal dan Firebase
     │   ├── models/  screens/  widgets/
-    └── dashboard/                # beranda, workspace, portofolio, profil
-        ├── data/                 # data contoh dan penyimpanan preferensi
-        ├── models/               # model, aturan alur proyek, rekomendasi
-        ├── screens/
-        └── widgets/
-test/                             # 19 unit test dan 25 widget test
+    ├── dashboard/                # beranda, workspace, portofolio, profil
+    │   ├── data/                 # data contoh dan penyimpanan preferensi
+    │   ├── models/               # model, aturan alur proyek, rekomendasi
+    │   ├── screens/
+    │   └── widgets/
+    └── notifications/            # model, penyimpanan, dan pusat notifikasi
+test/                             # 43 unit test dan 29 widget test
+firestore.rules                   # aturan keamanan Cloud Firestore
 docs/screenshots/                 # tangkapan layar untuk README
 ```
 
@@ -108,25 +118,31 @@ flutter emulators --launch Pixel_6
 flutter run
 ```
 
+Konfigurasi Firebase (`lib/firebase_options.dart` dan `android/app/google-services.json`) sudah disertakan untuk proyek Firebase `project-nexus-3477f`. Untuk memakai proyek Firebase sendiri, jalankan `flutterfire configure`, aktifkan login Email/Password, buat Cloud Firestore, lalu terapkan aturan keamanan dengan `firebase deploy --only firestore:rules`.
+
 **Akun uji coba:**
 
 | Peran | Cara masuk |
 |---|---|
 | Siswa | Daftar akun lewat tombol **Daftar**, lalu masuk dengan email, NIM, atau username dan kata sandi minimal 6 karakter. |
-| Guru (Budi Santoso) | Pilih **Guru**, masukkan email sekolah apa pun yang valid, misalnya `budi@school.id`. |
-| Guru (Siti Rahmawati) | Pilih **Guru**, masukkan `siti.rahmawati@school.id`. |
+| Guru (Budi Santoso) | Pilih **Guru**, masuk dengan `budi.santoso@school.id` dan kata sandi `guru12345`. |
+| Guru (Siti Rahmawati) | Pilih **Guru**, masuk dengan `siti.rahmawati@school.id` dan kata sandi `guru12345`. |
+
+Untuk melihat sinkronisasi realtime, buka aplikasi di dua jendela browser (misalnya satu jendela biasa dan satu jendela penyamaran), lalu masuk sebagai siswa di satu jendela dan sebagai guru di jendela lainnya.
 
 ## Pengujian
 
 ```bash
 flutter analyze   # analisis statis: No issues found
-flutter test      # 44 pengujian: All tests passed
+flutter test      # 72 pengujian: All tests passed
 ```
 
 ## Batasan prototipe
 
-- Data tersimpan di database lokal pada masing-masing perangkat atau browser, sehingga belum tersinkron antarperangkat.
-- Autentikasi masih lokal dan Firebase belum diintegrasikan, sehingga foto karya baru tersimpan di perangkat masing-masing.
+- Karya portofolio dan fotonya masih tersimpan di perangkat masing-masing, karena Firebase Storage memerlukan paket Blaze berbayar.
+- Notifikasi berupa notifikasi di dalam aplikasi; notifikasi push saat aplikasi tertutup belum tersedia.
+- Papan tugas satu proyek disimpan sebagai satu dokumen. Bila dua anggota mengubahnya pada saat yang sama, perubahan terakhir yang dipakai.
+- Pengguna dikenali lewat nama lengkap di data proyek, sehingga nama siswa sebaiknya unik.
 - Prototipe ini belum ditujukan untuk menyimpan data siswa yang sensitif.
 
 ## Progres pasca-UTS
@@ -135,12 +151,13 @@ flutter test      # 44 pengujian: All tests passed
 |---|---|---|
 | 1 | Database lokal (Hive CE) untuk proyek, lamaran, tugas Workspace, portofolio, dan akun siswa, beserta hash kata sandi dan pengujian persistensi | Selesai |
 | 2 | Unggah foto karya portofolio dari kamera atau galeri, disimpan di database lokal | Selesai |
+| 3 | Firebase Authentication dan sinkronisasi realtime Cloud Firestore dengan aturan keamanan, pusat notifikasi, serta edit dan hapus karya portofolio dan tugas Workspace | Selesai |
 
 ## Rencana menuju UAS
 
-1. Integrasi backend sesuai PRD: Firebase Authentication, Cloud Firestore untuk proyek, lamaran, dan tugas, serta Firebase Storage untuk foto karya. Database lokal dipertahankan sebagai cache saat offline.
-2. Notifikasi push untuk guru (draf baru) dan ketua proyek (pelamar baru).
-3. Pengujian pada emulator dan perangkat Android fisik, termasuk kamera.
+1. Notifikasi push dengan Firebase Cloud Messaging agar pemberitahuan tetap sampai saat aplikasi tertutup.
+2. Sinkronisasi portofolio ke cloud, termasuk penyimpanan foto karya.
+3. Pengujian pada emulator dan perangkat Android fisik, termasuk kamera dan sinkronisasi antara HP dan browser.
 
 ## Penggunaan AI
 
