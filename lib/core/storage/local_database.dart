@@ -8,6 +8,8 @@ abstract interface class KeyValueStore {
   String? read(String key);
 
   Future<void> write(String key, String value);
+
+  Future<void> delete(String key);
 }
 
 /// Penyimpanan permanen berbasis Hive: IndexedDB di browser, berkas di Android.
@@ -21,6 +23,9 @@ class HiveKeyValueStore implements KeyValueStore {
 
   @override
   Future<void> write(String key, String value) => _box.put(key, value);
+
+  @override
+  Future<void> delete(String key) => _box.delete(key);
 }
 
 /// Penyimpanan di memori, dipakai pada pengujian.
@@ -32,6 +37,9 @@ class MemoryKeyValueStore implements KeyValueStore {
 
   @override
   Future<void> write(String key, String value) async => _data[key] = value;
+
+  @override
+  Future<void> delete(String key) async => _data.remove(key);
 }
 
 /// Database lokal ProjectNexus. Setiap koleksi disimpan sebagai daftar JSON
@@ -91,6 +99,8 @@ class LocalDatabase {
 
   Future<void> writeBytes(String key, Uint8List bytes) =>
       _store.write(key, base64Encode(bytes));
+
+  Future<void> delete(String key) => _store.delete(key);
 }
 
 /// Mengubah koleksi JSON menjadi objek; entri yang tidak valid dilewati.

@@ -51,6 +51,18 @@ class TeamWorkStore extends ChangeNotifier {
     _commit();
   }
 
+  void updateTask(String projectId, WorkspaceTask task, WorkspaceTask updated) {
+    final tasks = _tasks[projectId];
+    final index = tasks?.indexOf(task) ?? -1;
+    if (tasks == null || index == -1) return;
+    tasks[index] = updated;
+    _commit();
+  }
+
+  void removeTask(String projectId, WorkspaceTask task) {
+    if (_tasks[projectId]?.remove(task) ?? false) _commit();
+  }
+
   /// Menambah karya. Bila [image] diisi, foto disimpan di database lokal dan
   /// karya menyimpan ID fotonya.
   void addPortfolioItem(PortfolioItem item, {Uint8List? image}) {
@@ -68,6 +80,62 @@ class TeamWorkStore extends ChangeNotifier {
     _portfolioItems.insert(0, saved);
     _commit();
     if (imageWrite != null) _lastSave = Future.wait([_lastSave, imageWrite]);
+  }
+
+  /// Mengganti isi karya. [photo] adalah foto setelah diedit: objek yang sama
+  /// dengan foto lama berarti tidak berubah, `null` berarti foto dihapus.
+  void updatePortfolioItem(
+    PortfolioItem item,
+    PortfolioItem edited, {
+    Uint8List? photo,
+  }) {
+    final index = _portfolioItems.indexOf(item);
+    if (index == -1) return;
+    final oldImageId = item.imageId;
+    final oldPhoto = oldImageId == null ? null : imageFor(oldImageId);
+    String? imageId = oldImageId;
+    final writes = <Future<void>>[];
+    if (!identical(photo, oldPhoto)) {
+      if (oldImageId != null) writes.addAll(_deleteImage(oldImageId));
+      imageId = null;
+      if (photo != null) {
+        imageId = 'img-${DateTime.now().microsecondsSinceEpoch}';
+        _images[imageId] = photo;
+        final write = database?.writeBytes(
+          LocalDatabase.portfolioImageKey(imageId),
+          photo,
+        );
+        if (write != null) writes.add(write);
+      }
+    }
+    _portfolioItems[index] = PortfolioItem(
+      owner: item.owner,
+      title: edited.title,
+      category: edited.category,
+      description: edited.description,
+      year: item.year,
+      icon: item.icon,
+      color: item.color,
+      isContribution: item.isContribution,
+      imageId: imageId,
+    );
+    _commit();
+    if (writes.isNotEmpty) _lastSave = Future.wait([_lastSave, ...writes]);
+  }
+
+  /// Menghapus karya beserta fotonya dari database.
+  void removePortfolioItem(PortfolioItem item) {
+    if (!_portfolioItems.remove(item)) return;
+    final imageId = item.imageId;
+    final writes = imageId == null ? <Future<void>>[] : _deleteImage(imageId);
+    _commit();
+    if (writes.isNotEmpty) _lastSave = Future.wait([_lastSave, ...writes]);
+  }
+
+  List<Future<void>> _deleteImage(String imageId) {
+    _images.remove(imageId);
+    final delete = database?.delete(LocalDatabase.portfolioImageKey(imageId));
+    return [?delete];
   }
 
   /// Foto karya berdasarkan ID; dibaca dari database sekali lalu disimpan di memori.
