@@ -1,0 +1,113 @@
+rules_version = '2';
+
+// Aturan keamanan Cloud Firestore ProjectNexus. Semua data hanya dapat
+// diakses pengguna yang sudah masuk, dan setiap perubahan dibatasi sesuai
+// peran: siswa mengurus proyek dan lamarannya sendiri, guru hanya meninjau
+// proyek yang ia dampingi.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function unchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Profil pengguna. Pendaftar hanya dapat membuat profil siswa untuk
+    // dirinya sendiri; akun guru dibuat oleh administrator sekolah.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'student'
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && unchanged(['role', 'fullName', 'email']);
+      allow delete: if false;
+    }
+
+    // Pemetaan NIM/username ke email, dibaca sebelum login. Hanya bisa dibaca
+    // satu per satu (tidak bisa didaftar) dan tidak dapat ditimpa.
+    match /login_ids/{loginId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
+    match /projects/{projectId} {
+      allow read: if signedIn();
+      // Draf diajukan atas nama sendiri dan selalu mulai dari status menunggu.
+      allow create: if signedIn()
+        && request.resource.data.id == projectId
+        && request.resource.data.leader == me().fullName
+        && request.resource.data.statusAcc == 'pending';
+      // Ketua mengubah rekrutmen atau mengirim revisi (kembali ke menunggu);
+      // guru pendamping menyetujui atau menolak. Ketua dan guru tidak berubah.
+      allow update: if signedIn()
+        && unchanged(['id', 'leader', 'teacherName'])
+        && (
+          (resource.data.leader == me().fullName
+            && (unchanged(['statusAcc']) || request.resource.data.statusAcc == 'pending'))
+          || (resource.data.teacherName == me().fullName
+            && me().role == 'teacher'
+            && request.resource.data.statusAcc in ['approved', 'rejected'])
+        );
+      allow delete: if false;
+    }
+
+    match /applications/{applicationId} {
+      allow read: if signedIn();
+      // Lamaran dikirim atas nama sendiri ke proyek yang sedang membuka rekrutmen.
+      allow create: if signedIn()
+        && request.resource.data.id == applicationId
+        && request.resource.data.applicantName == me().fullName
+        && request.resource.data.status == 'pending'
+        && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.recruitmentOpen == true;
+      // Hanya ketua proyek yang memutuskan, dan hanya status yang berubah.
+      allow update: if signedIn()
+        && get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.leader == me().fullName
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted', 'rejected'];
+      allow delete: if false;
+    }
+
+    // Papan tugas satu proyek. Dapat diubah ketua dan anggota yang diterima.
+    match /workspaces/{projectId} {
+      function isMember() {
+        let project = get(/databases/$(database)/documents/projects/$(projectId)).data;
+        let applicationId = projectId + '__' + me().fullName.lower().replace('[^a-z0-9]+', '-');
+        let application = /databases/$(database)/documents/applications/$(applicationId);
+        return project.leader == me().fullName
+          || (exists(application) && get(application).data.status == 'accepted');
+      }
+
+      allow read: if signedIn();
+      allow write: if signedIn()
+        && request.resource.data.projectId == projectId
+        && isMember();
+    }
+
+    // Notifikasi hanya dapat dibaca penerimanya. Pengirim harus diri sendiri,
+    // dan penerima hanya dapat menandai notifikasi sebagai sudah dibaca.
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.recipient == me().fullName;
+      allow create: if signedIn()
+        && request.resource.data.id == notificationId
+        && request.resource.data.sender == me().fullName
+        && request.resource.data.read == false;
+      allow update: if signedIn()
+        && resource.data.recipient == me().fullName
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if false;
+    }
+  }
+}
