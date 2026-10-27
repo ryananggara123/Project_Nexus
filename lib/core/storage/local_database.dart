@@ -53,6 +53,7 @@ class LocalDatabase {
   static const workspaceTasksKey = 'workspace_tasks';
   static const portfolioItemsKey = 'portfolio_items';
   static const studentAccountsKey = 'student_accounts';
+  static const notificationsKey = 'notifications';
 
   /// Setiap foto karya disimpan pada kuncinya sendiri agar daftar karya tetap ringan.
   static String portfolioImageKey(String imageId) => 'portfolio_image:$imageId';
