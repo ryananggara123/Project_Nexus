@@ -339,7 +339,7 @@ void main() {
       findsOneWidget,
     );
 
-    final taskMenu = find.byTooltip('Ubah status tugas').first;
+    final taskMenu = find.byTooltip('Opsi tugas').first;
     await tester.ensureVisible(taskMenu);
     await tester.tap(taskMenu);
     await tester.pumpAndSettle();
@@ -363,7 +363,7 @@ void main() {
       find
           .descendant(
             of: find.byKey(const Key('workspace_column_inProgress')),
-            matching: find.byTooltip('Ubah status tugas'),
+            matching: find.byTooltip('Opsi tugas'),
           )
           .last,
     );
@@ -371,7 +371,7 @@ void main() {
       find
           .descendant(
             of: find.byKey(const Key('workspace_column_inProgress')),
-            matching: find.byTooltip('Ubah status tugas'),
+            matching: find.byTooltip('Opsi tugas'),
           )
           .last,
     );
