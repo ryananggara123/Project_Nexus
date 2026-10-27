@@ -1,0 +1,25 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "project-nexus-3477f",
+          "appId": "1:990875022637:android:40b3f43aeb81f913998fa4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "project-nexus-3477f",
+          "configurations": {
+            "android": "1:990875022637:android:40b3f43aeb81f913998fa4",
+            "web": "1:990875022637:web:02006fe4b73d4e59998fa4"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
