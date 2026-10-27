@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
 import '../data/dashboard_sample_data.dart';
 import 'portfolio_item.dart';
@@ -8,10 +9,14 @@ import 'workspace_task.dart';
 /// Menyimpan tugas Workspace per proyek dan karya portofolio siswa.
 /// Data ini dulu disimpan di layar Beranda sehingga hilang setiap kali
 /// pengguna keluar; kini dikelola di sini dan disimpan ke database lokal.
-class TeamWorkStore extends ChangeNotifier {
+/// Tugas Workspace juga disinkronkan ke server agar seluruh anggota tim
+/// melihat papan tugas yang sama; portofolio (berisi foto) tetap lokal.
+class TeamWorkStore extends ChangeNotifier with CloudSync {
   TeamWorkStore({this.database}) {
     _restore();
   }
+
+  static const workspacesCollection = 'workspaces';
 
   final LocalDatabase? database;
   final Map<String, List<WorkspaceTask>> _tasks = {};
@@ -36,7 +41,7 @@ class TeamWorkStore extends ChangeNotifier {
 
   void addTask(String projectId, WorkspaceTask task) {
     _tasks.putIfAbsent(projectId, () => []).add(task);
-    _commit();
+    _commit(projectId: projectId);
   }
 
   void updateTaskStatus(
@@ -48,7 +53,7 @@ class TeamWorkStore extends ChangeNotifier {
     final index = tasks?.indexOf(task) ?? -1;
     if (tasks == null || index == -1) return;
     tasks[index] = task.copyWith(status: status);
-    _commit();
+    _commit(projectId: projectId);
   }
 
   void updateTask(String projectId, WorkspaceTask task, WorkspaceTask updated) {
@@ -56,11 +61,13 @@ class TeamWorkStore extends ChangeNotifier {
     final index = tasks?.indexOf(task) ?? -1;
     if (tasks == null || index == -1) return;
     tasks[index] = updated;
-    _commit();
+    _commit(projectId: projectId);
   }
 
   void removeTask(String projectId, WorkspaceTask task) {
-    if (_tasks[projectId]?.remove(task) ?? false) _commit();
+    if (_tasks[projectId]?.remove(task) ?? false) {
+      _commit(projectId: projectId);
+    }
   }
 
   /// Menambah karya. Bila [image] diisi, foto disimpan di database lokal dan
@@ -188,8 +195,46 @@ class TeamWorkStore extends ChangeNotifier {
     ]);
   }
 
-  void _commit() {
+  /// [projectId] diisi bila tugas proyek itu berubah agar papan tugasnya
+  /// dikirim ke server.
+  void _commit({String? projectId}) {
     notifyListeners();
     _persist();
+    if (projectId != null) _uploadWorkspace(projectId);
+  }
+
+  /// Satu dokumen per proyek berisi seluruh tugasnya. Bila dua anggota
+  /// mengubah papan bersamaan, perubahan terakhir yang dipakai.
+  void _uploadWorkspace(String projectId) =>
+      upload(workspacesCollection, projectId, {
+        'projectId': projectId,
+        'tasks': [for (final task in tasksFor(projectId)) task.toJson()],
+      });
+
+  /// Mulai sinkronisasi realtime papan tugas seluruh proyek.
+  void startSync(CloudStore cloud) {
+    beginSync(cloud);
+    listenRemote(workspacesCollection, (documents) {
+      if (documents.isEmpty) {
+        // Server masih kosong: papan tugas di perangkat ini menjadi data awal.
+        _tasks.keys.toList().forEach(_uploadWorkspace);
+        return;
+      }
+      _tasks.clear();
+      for (final document in documents) {
+        final projectId = document['projectId'];
+        final tasks = document['tasks'];
+        if (projectId is! String || tasks is! List) continue;
+        _tasks[projectId] = [
+          for (final task in tasks)
+            if (task is Map)
+              if (WorkspaceTask.tryFromJson(Map<String, dynamic>.from(task))
+                  case final WorkspaceTask parsed)
+                parsed,
+        ];
+      }
+      notifyListeners();
+      _persist();
+    });
   }
 }

@@ -1,23 +1,31 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
 import '../../auth/models/user_role.dart';
+import '../../notifications/models/app_notification.dart';
+import '../../notifications/models/notification_store.dart';
 import '../data/dashboard_sample_data.dart';
 import 'dashboard_models.dart';
 import 'portfolio_item.dart';
 import 'project_application.dart';
 
-class ProjectWorkflowStore extends ChangeNotifier {
+class ProjectWorkflowStore extends ChangeNotifier with CloudSync {
   /// Tanpa [database], data hanya hidup di memori (dipakai pengujian).
   /// Dengan [database], data dimuat saat dibuka dan disimpan setiap berubah.
-  ProjectWorkflowStore({this.database}) {
+  /// Bila [notifications] diisi, pihak terkait diberi tahu setiap ada
+  /// pengajuan, keputusan guru, lamaran, dan keputusan ketua proyek.
+  ProjectWorkflowStore({this.database, this.notifications}) {
     _restore();
   }
 
+  static const projectsCollection = 'projects';
+  static const applicationsCollection = 'applications';
+
   final LocalDatabase? database;
+  final NotificationStore? notifications;
   final List<ProjectListing> _projects = [];
   final List<ProjectApplication> _applications = [];
-  int _nextApplicationId = 0;
   Future<void> _lastSave = Future.value();
 
   List<ProjectListing> get projects => List.unmodifiable(_projects);
@@ -41,15 +49,6 @@ class ProjectWorkflowStore extends ChangeNotifier {
           ? sampleApplications
           : decodeAll(storedApplications, ProjectApplication.tryFromJson),
     );
-    // Lanjutkan penomoran agar ID lamaran baru tidak bentrok dengan yang tersimpan.
-    for (final application in _applications) {
-      final number = int.tryParse(
-        application.id.replaceFirst('application-', ''),
-      );
-      if (number != null && number > _nextApplicationId) {
-        _nextApplicationId = number;
-      }
-    }
     // Pembukaan pertama (atau data rusak): simpan data awal ke database.
     if (storedProjects == null || storedApplications == null) _persist();
   }
@@ -67,10 +66,59 @@ class ProjectWorkflowStore extends ChangeNotifier {
     ]);
   }
 
-  /// Memberi tahu tampilan lalu menyimpan perubahan ke database lokal.
-  void _commit() {
+  /// Memberi tahu tampilan, menyimpan perubahan ke database lokal, lalu
+  /// mengirim dokumen yang berubah ke server bila sedang tersinkron.
+  void _commit({ProjectListing? project, ProjectApplication? application}) {
     notifyListeners();
     _persist();
+    if (project != null) {
+      upload(projectsCollection, project.id, project.toJson());
+    }
+    if (application != null) {
+      upload(applicationsCollection, application.id, application.toJson());
+    }
+  }
+
+  /// Mulai sinkronisasi realtime: proyek dan lamaran dari perangkat lain
+  /// langsung masuk, dan database lokal ikut diperbarui sebagai cache.
+  void startSync(CloudStore cloud) {
+    beginSync(cloud);
+    listenRemote(projectsCollection, (documents) {
+      final remote = decodeAll(documents, ProjectListing.tryFromJson);
+      if (remote.isEmpty) {
+        // Server masih kosong: data di perangkat ini menjadi data awal.
+        for (final project in _projects) {
+          upload(projectsCollection, project.id, project.toJson());
+        }
+        return;
+      }
+      final merged = mergeById(_projects, remote, (project) => project.id);
+      _projects
+        ..clear()
+        ..addAll(merged);
+      notifyListeners();
+      _persist();
+    });
+    listenRemote(applicationsCollection, (documents) {
+      final remote = decodeAll(documents, ProjectApplication.tryFromJson);
+      if (remote.isEmpty) {
+        for (final application in _applications) {
+          upload(applicationsCollection, application.id, application.toJson());
+        }
+        return;
+      }
+      final merged = mergeById(
+        _applications,
+        remote,
+        (application) => application.id,
+        newFirst: false,
+      );
+      _applications
+        ..clear()
+        ..addAll(merged);
+      notifyListeners();
+      _persist();
+    });
   }
 
   WorkflowActionResult submit(
@@ -89,7 +137,16 @@ class ProjectWorkflowStore extends ChangeNotifier {
       return WorkflowActionResult.duplicateProject;
     }
     _projects.insert(0, project);
-    _commit();
+    _commit(project: project);
+    notifications?.send(
+      recipient: project.teacherName,
+      sender: submitterName,
+      type: NotificationType.projectSubmitted,
+      title: 'Draf proyek baru',
+      body:
+          '${project.leader} mengajukan “${project.title}” dan menunggu tinjauanmu.',
+      projectId: project.id,
+    );
     return WorkflowActionResult.success;
   }
 
@@ -166,19 +223,36 @@ class ProjectWorkflowStore extends ChangeNotifier {
       return WorkflowActionResult.duplicateApplication;
     }
 
-    _nextApplicationId++;
-    _applications.add(
-      ProjectApplication(
-        id: 'application-$_nextApplicationId',
-        projectId: projectId,
-        applicantName: applicantName.trim(),
-        status: ProjectApplicationStatus.pending,
-        skills: List.unmodifiable(applicantSkills),
-        portfolioItems: List.unmodifiable(applicantPortfolio),
-      ),
+    final application = ProjectApplication(
+      id: applicationIdFor(projectId, applicantName),
+      projectId: projectId,
+      applicantName: applicantName.trim(),
+      status: ProjectApplicationStatus.pending,
+      skills: List.unmodifiable(applicantSkills),
+      portfolioItems: List.unmodifiable(applicantPortfolio),
     );
-    _commit();
+    _applications.add(application);
+    _commit(application: application);
+    notifications?.send(
+      recipient: project.leader,
+      sender: applicantName,
+      type: NotificationType.newApplicant,
+      title: 'Pelamar baru',
+      body:
+          '${application.applicantName} ingin bergabung di “${project.title}”.',
+      projectId: projectId,
+    );
     return WorkflowActionResult.success;
+  }
+
+  /// ID lamaran dibentuk dari proyek dan nama pelamar, sehingga lamaran yang
+  /// sama dari dua perangkat tetap menjadi satu dokumen di server.
+  static String applicationIdFor(String projectId, String applicantName) {
+    final applicant = applicantName.trim().toLowerCase().replaceAll(
+      RegExp('[^a-z0-9]+'),
+      '-',
+    );
+    return '${projectId}__$applicant';
   }
 
   WorkflowActionResult reviewApplication({
@@ -200,12 +274,24 @@ class ProjectWorkflowStore extends ChangeNotifier {
       return WorkflowActionResult.applicationAlreadyReviewed;
     }
 
-    _applications[index] = _applications[index].copyWith(
+    final application = _applications[index] = _applications[index].copyWith(
       status: accept
           ? ProjectApplicationStatus.accepted
           : ProjectApplicationStatus.rejected,
     );
-    _commit();
+    _commit(application: application);
+    notifications?.send(
+      recipient: application.applicantName,
+      sender: reviewerName,
+      type: accept
+          ? NotificationType.applicationAccepted
+          : NotificationType.applicationRejected,
+      title: accept ? 'Lamaran diterima' : 'Lamaran belum diterima',
+      body: accept
+          ? 'Kamu diterima di tim “${project.title}”. Workspace tim sudah bisa dibuka.'
+          : 'Lamaranmu untuk “${project.title}” belum diterima ketua proyek.',
+      projectId: projectId,
+    );
     return WorkflowActionResult.success;
   }
 
@@ -226,8 +312,10 @@ class ProjectWorkflowStore extends ChangeNotifier {
       return WorkflowActionResult.projectNotApproved;
     }
 
-    _projects[index] = project.copyWith(recruitmentOpen: isOpen);
-    _commit();
+    final updated = _projects[index] = project.copyWith(
+      recruitmentOpen: isOpen,
+    );
+    _commit(project: updated);
     return WorkflowActionResult.success;
   }
 
@@ -239,8 +327,10 @@ class ProjectWorkflowStore extends ChangeNotifier {
     String? note,
   }) {
     if (role != UserRole.teacher) return WorkflowActionResult.notAuthorized;
-    final index = _projects.indexOf(project);
+    // Dicari lewat ID karena data proyek bisa sudah diperbarui perangkat lain.
+    final index = _projectIndex(project.id);
     if (index == -1) return WorkflowActionResult.projectNotFound;
+    project = _projects[index];
     if (project.teacherName.toLowerCase() !=
         reviewerName.trim().toLowerCase()) {
       return WorkflowActionResult.notAssignedTeacher;
@@ -249,12 +339,27 @@ class ProjectWorkflowStore extends ChangeNotifier {
         (status != 'approved' && status != 'rejected')) {
       return WorkflowActionResult.invalidTransition;
     }
-    _projects[index] = project.copyWith(
+    final reviewed = _projects[index] = project.copyWith(
       statusAcc: status,
       recruitmentOpen: status == 'approved',
       reviewNote: note,
     );
-    _commit();
+    _commit(project: reviewed);
+    final approved = status == 'approved';
+    notifications?.send(
+      recipient: reviewed.leader,
+      sender: reviewerName,
+      type: approved
+          ? NotificationType.projectApproved
+          : NotificationType.projectRejected,
+      title: approved ? 'Proyek disetujui' : 'Proyek perlu diperbaiki',
+      body: approved
+          ? '“${reviewed.title}” disetujui $reviewerName dan sudah tampil di feed.'
+          : note == null
+          ? '$reviewerName meminta revisi untuk “${reviewed.title}”.'
+          : '$reviewerName meminta revisi untuk “${reviewed.title}”: $note',
+      projectId: reviewed.id,
+    );
     return WorkflowActionResult.success;
   }
 
@@ -266,22 +371,32 @@ class ProjectWorkflowStore extends ChangeNotifier {
     required UserRole role,
   }) {
     if (role != UserRole.student) return WorkflowActionResult.notAuthorized;
-    final index = _projects.indexOf(project);
+    final index = _projectIndex(project.id);
     if (index == -1) return WorkflowActionResult.projectNotFound;
+    project = _projects[index];
     if (project.leader.toLowerCase() != studentName.trim().toLowerCase()) {
       return WorkflowActionResult.notProjectLeader;
     }
     if (project.statusAcc != 'rejected') {
       return WorkflowActionResult.invalidTransition;
     }
-    _projects[index] = project.copyWith(
+    final revised = _projects[index] = project.copyWith(
       title: title,
       description: description,
       statusAcc: 'pending',
       recruitmentOpen: false,
       clearReviewNote: true,
     );
-    _commit();
+    _commit(project: revised);
+    notifications?.send(
+      recipient: revised.teacherName,
+      sender: studentName,
+      type: NotificationType.projectSubmitted,
+      title: 'Revisi proyek masuk',
+      body:
+          '${revised.leader} mengirim revisi “${revised.title}” untuk ditinjau ulang.',
+      projectId: revised.id,
+    );
     return WorkflowActionResult.success;
   }
 

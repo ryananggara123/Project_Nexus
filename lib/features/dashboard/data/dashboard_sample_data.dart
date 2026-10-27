@@ -97,14 +97,14 @@ const schoolAchievements = [
 /// Data awal yang dimasukkan ke database lokal saat aplikasi pertama kali dibuka.
 const sampleApplications = [
   ProjectApplication(
-    id: 'sample-water-ryan',
+    id: 'sample-water-iot__ryan-anggara-deki',
     projectId: 'sample-water-iot',
     applicantName: 'Ryan Anggara Deki',
     status: ProjectApplicationStatus.accepted,
     skills: ['Flutter', 'UI/UX', 'Prototyping', 'Kolaborasi'],
   ),
   ProjectApplication(
-    id: 'sample-water-rizky',
+    id: 'sample-water-iot__rizky-ramadhan',
     projectId: 'sample-water-iot',
     applicantName: 'Rizky Ramadhan',
     status: ProjectApplicationStatus.accepted,
