@@ -19,6 +19,8 @@ class WorkspaceScreen extends StatelessWidget {
     required this.isTeacherView,
     required this.onAddTask,
     required this.onTaskStatusChanged,
+    this.onEditTask,
+    this.onDeleteTask,
     super.key,
   });
 
@@ -33,6 +35,8 @@ class WorkspaceScreen extends StatelessWidget {
   final ValueChanged<WorkspaceTask> onAddTask;
   final void Function(WorkspaceTask task, WorkspaceTaskStatus status)
   onTaskStatusChanged;
+  final void Function(WorkspaceTask task, WorkspaceTask updated)? onEditTask;
+  final ValueChanged<WorkspaceTask>? onDeleteTask;
 
   @override
   Widget build(BuildContext context) {
@@ -286,6 +290,8 @@ class WorkspaceScreen extends StatelessWidget {
             status: status,
             tasks: statusTasks,
             onTaskStatusChanged: onTaskStatusChanged,
+            onEdit: (task) => _showEditTaskDialog(context, task),
+            onDelete: (task) => _confirmDeleteTask(context, task),
           );
         }).toList();
 
@@ -307,17 +313,57 @@ class WorkspaceScreen extends StatelessWidget {
     );
   }
 
+  List<String> get _assignees => members
+      .where((member) => member.$2 != 'Guru pendamping')
+      .map((member) => member.$1)
+      .toList();
+
   Future<void> _showAddTaskDialog(BuildContext context) async {
     final task = await showDialog<WorkspaceTask>(
       context: context,
-      builder: (context) => _AddWorkspaceTaskDialog(
-        assignees: members
-            .where((member) => member.$2 != 'Guru pendamping')
-            .map((member) => member.$1)
-            .toList(),
-      ),
+      builder: (context) => _AddWorkspaceTaskDialog(assignees: _assignees),
     );
     if (task != null) onAddTask(task);
+  }
+
+  Future<void> _showEditTaskDialog(
+    BuildContext context,
+    WorkspaceTask task,
+  ) async {
+    final updated = await showDialog<WorkspaceTask>(
+      context: context,
+      builder: (context) =>
+          _AddWorkspaceTaskDialog(assignees: _assignees, initial: task),
+    );
+    if (updated != null) onEditTask?.call(task, updated);
+  }
+
+  Future<void> _confirmDeleteTask(
+    BuildContext context,
+    WorkspaceTask task,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus tugas?'),
+        content: Text('“${task.title}” akan dihapus dari papan tugas.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            key: const Key('confirm_delete'),
+            style: FilledButton.styleFrom(
+              backgroundColor: ProjectNexusColors.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) onDeleteTask?.call(task);
   }
 }
 
@@ -375,12 +421,16 @@ class _TaskColumn extends StatelessWidget {
     required this.status,
     required this.tasks,
     required this.onTaskStatusChanged,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   final WorkspaceTaskStatus status;
   final List<WorkspaceTask> tasks;
   final void Function(WorkspaceTask task, WorkspaceTaskStatus status)
   onTaskStatusChanged;
+  final ValueChanged<WorkspaceTask> onEdit;
+  final ValueChanged<WorkspaceTask> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -456,6 +506,8 @@ class _TaskColumn extends StatelessWidget {
                 task: task,
                 onStatusChanged: (newStatus) =>
                     onTaskStatusChanged(task, newStatus),
+                onEdit: () => onEdit(task),
+                onDelete: () => onDelete(task),
               ),
             ),
         ],
@@ -465,10 +517,17 @@ class _TaskColumn extends StatelessWidget {
 }
 
 class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task, required this.onStatusChanged});
+  const _TaskCard({
+    required this.task,
+    required this.onStatusChanged,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final WorkspaceTask task;
   final ValueChanged<WorkspaceTaskStatus> onStatusChanged;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -500,22 +559,39 @@ class _TaskCard extends StatelessWidget {
                   ),
                 ),
               ),
-              PopupMenuButton<WorkspaceTaskStatus>(
-                tooltip: 'Ubah status tugas',
+              // Nilai menu berupa status (pindah kolom) atau 'edit'/'delete'.
+              PopupMenuButton<Object>(
+                tooltip: 'Opsi tugas',
                 icon: const Icon(
                   Icons.more_horiz_rounded,
                   color: ProjectNexusColors.muted,
                   size: 20,
                 ),
-                onSelected: onStatusChanged,
-                itemBuilder: (context) => WorkspaceTaskStatus.values
-                    .map(
-                      (status) => PopupMenuItem(
+                onSelected: (value) => switch (value) {
+                  WorkspaceTaskStatus status => onStatusChanged(status),
+                  'edit' => onEdit(),
+                  _ => onDelete(),
+                },
+                itemBuilder: (context) => [
+                  for (final status in WorkspaceTaskStatus.values)
+                    if (status != task.status)
+                      PopupMenuItem<Object>(
                         value: status,
                         child: Text('Pindahkan ke ${status.label}'),
                       ),
-                    )
-                    .toList(),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<Object>(
+                    value: 'edit',
+                    child: Text('Edit tugas'),
+                  ),
+                  const PopupMenuItem<Object>(
+                    value: 'delete',
+                    child: Text(
+                      'Hapus tugas',
+                      style: TextStyle(color: ProjectNexusColors.error),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -569,9 +645,12 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _AddWorkspaceTaskDialog extends StatefulWidget {
-  const _AddWorkspaceTaskDialog({required this.assignees});
+  const _AddWorkspaceTaskDialog({required this.assignees, this.initial});
 
   final List<String> assignees;
+
+  /// Tugas yang sedang diedit; `null` saat menambah tugas baru.
+  final WorkspaceTask? initial;
 
   @override
   State<_AddWorkspaceTaskDialog> createState() =>
@@ -582,6 +661,19 @@ class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   String? _assignee;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    if (initial != null) {
+      _titleController.text = initial.title;
+      // Penanggung jawab lama dipertahankan bila masih anggota tim.
+      if (widget.assignees.contains(initial.assignee)) {
+        _assignee = initial.assignee;
+      }
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -598,7 +690,7 @@ class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Tambah tugas'),
+      title: Text(widget.initial == null ? 'Tambah tugas' : 'Edit tugas'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -644,17 +736,20 @@ class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
           onPressed: () {
             if (widget.assignees.isEmpty) return;
             if (!_formKey.currentState!.validate()) return;
+            final initial = widget.initial;
             Navigator.pop(
               context,
               WorkspaceTask(
                 title: _titleController.text.trim(),
                 assignee: _assignee!,
-                dueLabel: 'Baru ditambahkan',
-                status: WorkspaceTaskStatus.todo,
+                dueLabel: initial?.dueLabel ?? 'Baru ditambahkan',
+                status: initial?.status ?? WorkspaceTaskStatus.todo,
               ),
             );
           },
-          child: const Text('Simpan tugas'),
+          child: Text(
+            widget.initial == null ? 'Simpan tugas' : 'Simpan perubahan',
+          ),
         ),
       ],
     );

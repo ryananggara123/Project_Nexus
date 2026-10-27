@@ -16,6 +16,8 @@ class PortfolioScreen extends StatelessWidget {
     required this.items,
     required this.onAddItem,
     this.imageFor,
+    this.onEditItem,
+    this.onDeleteItem,
     super.key,
   });
 
@@ -27,6 +29,16 @@ class PortfolioScreen extends StatelessWidget {
 
   /// Mengambil foto karya berdasarkan ID-nya.
   final Uint8List? Function(String imageId)? imageFor;
+
+  /// Menyimpan hasil edit karya. [photo] adalah foto setelah diedit.
+  final void Function(
+    PortfolioItem item,
+    PortfolioItem edited,
+    Uint8List? photo,
+  )?
+  onEditItem;
+
+  final ValueChanged<PortfolioItem>? onDeleteItem;
 
   bool get _isTeacher => role == UserRole.teacher;
 
@@ -93,6 +105,12 @@ class PortfolioScreen extends StatelessWidget {
                     item: item,
                     showOwner: _isTeacher,
                     image: _imageOf(item),
+                    onEdit: _canManage(item)
+                        ? () => _showEditItemDialog(context, item)
+                        : null,
+                    onDelete: _canManage(item)
+                        ? () => _confirmDelete(context, item)
+                        : null,
                   ),
                 )
                 .toList(),
@@ -109,6 +127,12 @@ class PortfolioScreen extends StatelessWidget {
                     item: item,
                     showOwner: _isTeacher,
                     image: _imageOf(item),
+                    onEdit: _canManage(item)
+                        ? () => _showEditItemDialog(context, item)
+                        : null,
+                    onDelete: _canManage(item)
+                        ? () => _confirmDelete(context, item)
+                        : null,
                   ),
                 ),
               )
@@ -130,6 +154,53 @@ class PortfolioScreen extends StatelessWidget {
     );
     if (result != null) onAddItem(result.$1, result.$2);
   }
+
+  /// Siswa hanya dapat mengubah karyanya sendiri; kontribusi dari Workspace
+  /// tercatat otomatis sehingga tidak dapat diedit.
+  bool _canManage(PortfolioItem item) =>
+      !_isTeacher && !item.isContribution && item.owner == studentName;
+
+  Future<void> _showEditItemDialog(
+    BuildContext context,
+    PortfolioItem item,
+  ) async {
+    final result = await showDialog<(PortfolioItem, Uint8List?)>(
+      context: context,
+      builder: (context) => _AddPortfolioItemDialog(
+        studentName: studentName,
+        initial: item,
+        initialPhoto: _imageOf(item),
+      ),
+    );
+    if (result != null) onEditItem?.call(item, result.$1, result.$2);
+  }
+
+  Future<void> _confirmDelete(BuildContext context, PortfolioItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus karya?'),
+        content: Text(
+          '“${item.title}” akan dihapus dari portofoliomu beserta fotonya.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            key: const Key('confirm_delete'),
+            style: FilledButton.styleFrom(
+              backgroundColor: ProjectNexusColors.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) onDeleteItem?.call(item);
+  }
 }
 
 class _PortfolioCard extends StatelessWidget {
@@ -137,11 +208,15 @@ class _PortfolioCard extends StatelessWidget {
     required this.item,
     required this.showOwner,
     this.image,
+    this.onEdit,
+    this.onDelete,
   });
 
   final PortfolioItem item;
   final bool showOwner;
   final Uint8List? image;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +311,38 @@ class _PortfolioCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onEdit != null || onDelete != null)
+                  PopupMenuButton<String>(
+                    key: Key('portfolio_menu_${item.title}'),
+                    tooltip: 'Opsi karya',
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: ProjectNexusColors.muted,
+                    ),
+                    onSelected: (action) =>
+                        action == 'edit' ? onEdit?.call() : onDelete?.call(),
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Edit karya'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.delete_outline_rounded,
+                            color: ProjectNexusColors.error,
+                          ),
+                          title: Text('Hapus karya'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -271,9 +378,17 @@ class _EmptyPortfolio extends StatelessWidget {
 }
 
 class _AddPortfolioItemDialog extends StatefulWidget {
-  const _AddPortfolioItemDialog({required this.studentName});
+  const _AddPortfolioItemDialog({
+    required this.studentName,
+    this.initial,
+    this.initialPhoto,
+  });
 
   final String studentName;
+
+  /// Karya yang sedang diedit; `null` saat menambah karya baru.
+  final PortfolioItem? initial;
+  final Uint8List? initialPhoto;
 
   @override
   State<_AddPortfolioItemDialog> createState() =>
@@ -289,6 +404,20 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
   String? _photoError;
   bool _pickingPhoto = false;
 
+  bool get _isEditing => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    if (initial != null) {
+      _titleController.text = initial.title;
+      _categoryController.text = initial.category;
+      _descriptionController.text = initial.description;
+      _photo = widget.initialPhoto;
+    }
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -300,7 +429,7 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Tambah karya'),
+      title: Text(_isEditing ? 'Edit karya' : 'Tambah karya'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -366,7 +495,7 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
               _photo,
             ));
           },
-          child: const Text('Simpan karya'),
+          child: Text(_isEditing ? 'Simpan perubahan' : 'Simpan karya'),
         ),
       ],
     );

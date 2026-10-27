@@ -350,6 +350,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onAddTask: (task) => _teamStore.addTask(project.id, task),
       onTaskStatusChanged: (task, status) =>
           _updateWorkspaceTaskStatus(project.id, task, status),
+      onEditTask: (task, updated) =>
+          _teamStore.updateTask(project.id, task, updated),
+      onDeleteTask: (task) {
+        _teamStore.removeTask(project.id, task);
+        _showMessage(SnackBar(content: Text('Tugas “${task.title}” dihapus.')));
+      },
     );
   }
 
@@ -416,6 +422,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         image: image,
       ),
       imageFor: _teamStore.imageFor,
+      onEditItem: (item, edited, photo) =>
+          _teamStore.updatePortfolioItem(item, edited, photo: photo),
+      onDeleteItem: (item) {
+        _teamStore.removePortfolioItem(item);
+        _showMessage(
+          SnackBar(content: Text('“${item.title}” dihapus dari portofolio.')),
+        );
+      },
     );
   }
 
