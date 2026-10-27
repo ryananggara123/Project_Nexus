@@ -5,17 +5,20 @@ import '../../../core/theme/project_nexus_colors.dart';
 /// Lebar layar saat navigasi samping (yang sudah memuat logo) dipakai.
 const wideLayoutBreakpoint = 1000.0;
 
-/// Baris atas setiap menu: logo ProjectNexus, keterangan ruang, tombol keluar.
-/// Disembunyikan pada layar lebar karena navigasi samping sudah memuat logo.
+/// Baris atas setiap menu: logo ProjectNexus, keterangan ruang, tombol
+/// notifikasi, dan tombol keluar. Disembunyikan pada layar lebar karena
+/// navigasi samping sudah memuat logo dan tombol notifikasi.
 class AppHeader extends StatelessWidget {
   const AppHeader({
     required this.isTeacherView,
     required this.onLogout,
+    this.notificationButton,
     super.key,
   });
 
   final bool isTeacherView;
   final VoidCallback onLogout;
+  final Widget? notificationButton;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +64,10 @@ class AppHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          if (notificationButton case final button?) ...[
+            button,
+            const SizedBox(width: 8),
+          ],
           IconButton(
             tooltip: 'Keluar',
             onPressed: onLogout,

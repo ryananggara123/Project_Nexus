@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
-import '../models/student_demo_account.dart';
+import '../data/account_service.dart';
 import '../widgets/auth_widgets.dart';
 
+/// Form registrasi siswa. Bila berhasil, layar ditutup dengan data
+/// registrasinya agar layar login dapat mengisi NIM secara otomatis.
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({required this.existingAccounts, super.key});
+  const RegistrationScreen({required this.accounts, super.key});
 
-  final List<StudentDemoAccount> existingAccounts;
+  final AccountService accounts;
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -23,6 +25,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmation = true;
+  bool _busy = false;
+
+  /// Kesalahan dari server (misalnya NIM sudah dipakai), ditampilkan di kolom
+  /// terkait sampai isinya diubah.
+  final Map<AccountField, String> _serverErrors = {};
 
   @override
   void dispose() {
@@ -76,6 +83,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const FieldLabel('NIM'),
                     TextFormField(
                       key: const Key('registration_nim'),
+                      onChanged: (_) => _serverErrors.remove(AccountField.nim),
                       controller: _nimController,
                       keyboardType: TextInputType.number,
                       textInputAction: TextInputAction.next,
@@ -88,6 +96,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const FieldLabel('Username'),
                     TextFormField(
                       key: const Key('registration_username'),
+                      onChanged: (_) =>
+                          _serverErrors.remove(AccountField.username),
                       controller: _usernameController,
                       textInputAction: TextInputAction.next,
                       autocorrect: false,
@@ -100,6 +110,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const FieldLabel('Email'),
                     TextFormField(
                       key: const Key('registration_email'),
+                      onChanged: (_) =>
+                          _serverErrors.remove(AccountField.email),
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
@@ -113,6 +125,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const FieldLabel('Kata sandi'),
                     TextFormField(
                       key: const Key('registration_password'),
+                      onChanged: (_) =>
+                          _serverErrors.remove(AccountField.password),
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.next,
@@ -127,7 +141,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
                       validator: (value) => value == null || value.length < 6
                           ? 'Kata sandi minimal 6 karakter.'
-                          : null,
+                          : _serverErrors[AccountField.password],
                     ),
                     const SizedBox(height: 18),
                     const FieldLabel('Ulangi kata sandi'),
@@ -153,17 +167,25 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const SizedBox(height: 28),
                     FilledButton(
                       key: const Key('registration_submit'),
-                      onPressed: _submit,
+                      onPressed: _busy ? null : _submit,
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                       ),
-                      child: const Text('Buat akun'),
+                      child: _busy
+                          ? const SizedBox.square(
+                              dimension: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Buat akun'),
                     ),
                     const SizedBox(height: 14),
-                    const Text(
-                      'Akun hanya tersimpan selama aplikasi berjalan.',
+                    Text(
+                      widget.accounts.storageNote,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: ProjectNexusColors.muted,
                         fontSize: 12,
                       ),
@@ -184,10 +206,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (!RegExp(r'^\d{6,20}$').hasMatch(nim)) {
       return 'NIM harus terdiri dari 6–20 angka.';
     }
-    if (widget.existingAccounts.any((account) => account.nim == nim)) {
-      return 'NIM sudah terdaftar.';
-    }
-    return null;
+    return _serverErrors[AccountField.nim];
   }
 
   String? _validateUsername(String? value) {
@@ -195,12 +214,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (!RegExp(r'^[a-zA-Z0-9._-]{3,30}$').hasMatch(username)) {
       return 'Username 3–30 karakter: huruf, angka, titik, _ atau -.';
     }
-    if (widget.existingAccounts.any(
-      (account) => account.username.toLowerCase() == username.toLowerCase(),
-    )) {
-      return 'Username sudah digunakan.';
-    }
-    return null;
+    return _serverErrors[AccountField.username];
   }
 
   String? _validateEmail(String? value) {
@@ -208,25 +222,38 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       return 'Masukkan alamat email yang valid.';
     }
-    if (widget.existingAccounts.any(
-      (account) => account.email.toLowerCase() == email.toLowerCase(),
-    )) {
-      return 'Email sudah terdaftar.';
-    }
-    return null;
+    return _serverErrors[AccountField.email];
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    Navigator.pop(
-      context,
-      StudentDemoAccount.register(
-        fullName: _nameController.text.trim(),
-        nim: _nimController.text.trim(),
-        username: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      ),
+  Future<void> _submit() async {
+    _serverErrors.clear();
+    if (_busy || !_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
+
+    final StudentRegistration registration = (
+      fullName: _nameController.text.trim(),
+      nim: _nimController.text.trim(),
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
     );
+    setState(() => _busy = true);
+    try {
+      await widget.accounts.register(registration);
+      if (mounted) Navigator.pop(context, registration);
+    } on AccountException catch (error) {
+      if (!mounted) return;
+      final field = error.field;
+      if (field == null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
+      } else {
+        _serverErrors[field] = error.message;
+        _formKey.currentState!.validate();
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }

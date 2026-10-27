@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../../auth/widgets/auth_widgets.dart';
+import '../../notifications/models/app_notification.dart';
+import '../../notifications/models/notification_store.dart';
+import '../../notifications/widgets/notification_center.dart';
 import '../data/dashboard_sample_data.dart';
 import '../data/recommendation_preferences_store.dart';
 import '../models/dashboard_models.dart';
@@ -33,8 +36,10 @@ class DashboardScreen extends StatefulWidget {
     required this.onLogout,
     required this.projectStore,
     this.teamStore,
+    this.notificationStore,
     this.studentName,
     this.teacherName,
+    this.email,
     super.key,
   });
 
@@ -45,8 +50,14 @@ class DashboardScreen extends StatefulWidget {
   /// Penyimpanan tugas Workspace dan portofolio. Bila kosong, layar membuat
   /// penyimpanan sendiri di memori.
   final TeamWorkStore? teamStore;
+
+  /// Pusat notifikasi. Bila kosong, layar membuat penyimpanan sendiri di memori.
+  final NotificationStore? notificationStore;
   final String? studentName;
   final String? teacherName;
+
+  /// Email akun yang masuk, ditampilkan di profil.
+  final String? email;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -65,12 +76,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   TeamWorkStore? _ownedTeamStore;
   late final TeamWorkStore _teamStore =
       widget.teamStore ?? (_ownedTeamStore = TeamWorkStore());
+  NotificationStore? _ownedNotificationStore;
+  late final NotificationStore _notifications =
+      widget.notificationStore ??
+      (_ownedNotificationStore = NotificationStore());
+  StreamSubscription<AppNotification>? _incomingNotifications;
   late ProfileData _profile = _isTeacherView
       ? ProfileData(
           name: _currentTeacherName,
           roleLabel: 'Guru Pendamping · Teknologi Informasi',
           institution: 'ProjectNexus · SMA Nusantara',
-          email: _teacherEmail,
+          email: widget.email ?? _teacherEmail,
           bio: 'Mendampingi siswa mengembangkan ide teknologi menjadi proyek yang berdampak dan siap berkompetisi.',
           skills: ['Mentoring', 'IoT', 'Riset', 'Pengembangan Proyek'],
         )
@@ -78,7 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           name: widget.studentName ?? 'Ryan Anggara Deki',
           roleLabel: 'Siswa · Kelas XI',
           institution: 'SMA Nusantara · Bandar Lampung',
-          email: 'ryan@school.id',
+          email: widget.email ?? 'ryan@school.id',
           bio: 'Siswa yang tertarik pada pengembangan aplikasi mobile, desain produk digital, dan kolaborasi lintas keahlian.',
           skills: ['Flutter', 'UI/UX', 'Prototyping', 'Kolaborasi'],
           interests: ['Teknologi', 'Desain & UI/UX', 'Lingkungan'],
@@ -117,6 +133,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     widget.projectStore.addListener(_onStoreChanged);
     _teamStore.addListener(_onStoreChanged);
+    _incomingNotifications = _notifications.incoming.listen(_announce);
     if (!_isTeacherView) _restoreRecommendationPreferences();
   }
 
@@ -134,7 +151,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     widget.projectStore.removeListener(_onStoreChanged);
     _teamStore.removeListener(_onStoreChanged);
     _ownedTeamStore?.dispose();
+    unawaited(_incomingNotifications?.cancel());
+    _ownedNotificationStore?.dispose();
     super.dispose();
+  }
+
+  /// Nama penerima notifikasi untuk akun yang sedang masuk.
+  String get _notificationRecipient =>
+      _isTeacherView ? _currentTeacherName : _profile.name;
+
+  Widget get _notificationBell => NotificationBell(
+    store: _notifications,
+    recipient: _notificationRecipient,
+  );
+
+  /// Notifikasi yang tiba dari perangkat lain langsung diumumkan.
+  void _announce(AppNotification notification) {
+    if (!mounted ||
+        notification.recipient.toLowerCase() !=
+            _notificationRecipient.toLowerCase()) {
+      return;
+    }
+    _showMessage(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(notification.type.icon, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('${notification.title} · ${notification.body}'),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'Lihat',
+          onPressed: () => showNotificationCenter(
+            context,
+            store: _notifications,
+            recipient: _notificationRecipient,
+          ),
+        ),
+      ),
+    );
   }
 
   void _onStoreChanged() {
@@ -192,9 +250,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 28),
-            child: BrandMark(size: 36),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 0, 28),
+            child: Row(
+              children: [
+                const Expanded(child: BrandMark(size: 36)),
+                _notificationBell,
+              ],
+            ),
           ),
           Expanded(
             child: NavigationRail(
@@ -347,7 +410,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       members: _workspaceMembers(project),
       tasks: tasks,
       isTeacherView: _isTeacherView,
-      onAddTask: (task) => _teamStore.addTask(project.id, task),
+      onAddTask: (task) {
+        _teamStore.addTask(project.id, task);
+        _notifications.send(
+          recipient: task.assignee,
+          sender: _notificationRecipient,
+          type: NotificationType.taskAssigned,
+          title: 'Tugas baru untukmu',
+          body:
+              '$_notificationRecipient memberimu tugas “${task.title}” di ${project.title}.',
+          projectId: project.id,
+        );
+      },
       onTaskStatusChanged: (task, status) =>
           _updateWorkspaceTaskStatus(project.id, task, status),
       onEditTask: (task, updated) =>
@@ -482,8 +556,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _teamStore.updateTaskStatus(projectId, task, status);
   }
 
-  Widget get _appHeader =>
-      AppHeader(isTeacherView: _isTeacherView, onLogout: _logout);
+  Widget get _appHeader => AppHeader(
+    isTeacherView: _isTeacherView,
+    onLogout: _logout,
+    notificationButton: _notificationBell,
+  );
 
   Widget _buildDashboard() {
     return MenuPage(

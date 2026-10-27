@@ -1,23 +1,29 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
 import '../../dashboard/models/project_workflow_store.dart';
 import '../../dashboard/models/team_work_store.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
-import '../models/student_demo_account.dart';
+import '../../notifications/models/notification_store.dart';
+import '../data/account_service.dart';
 import '../models/user_role.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({this.database, super.key});
+  const AuthGate({this.database, this.cloud, this.accounts, super.key});
 
   /// Database lokal. Bila kosong, data hanya disimpan di memori.
   final LocalDatabase? database;
+
+  /// Server untuk sinkronisasi realtime. Bila kosong, aplikasi berjalan lokal.
+  final CloudStore? cloud;
+
+  /// Layanan akun. Bila kosong, akun disimpan di database lokal.
+  final AccountService? accounts;
 
   static const splashDuration = Duration(milliseconds: 1800);
 
@@ -26,23 +32,18 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  static const _roleStorageKey = 'project_nexus_auth_role';
-  static const _studentNameStorageKey = 'project_nexus_auth_student_name';
-  static const _teacherNameStorageKey = 'project_nexus_auth_teacher_name';
-
-  UserRole? _currentRole;
-  String? _currentStudentName;
-  String? _currentTeacherName;
-  bool _showSplash = true;
+  UserAccount? _account;
+  bool _splashDone = false;
+  bool _restoring = true;
   Timer? _splashTimer;
-  late final List<StudentDemoAccount> _studentAccounts = [
-    ...decodeAll(
-      widget.database?.readList(LocalDatabase.studentAccountsKey) ?? const [],
-      StudentDemoAccount.tryFromJson,
-    ),
-  ];
+  late final AccountService _accounts =
+      widget.accounts ?? LocalAccountService(database: widget.database);
+  late final NotificationStore _notificationStore = NotificationStore(
+    database: widget.database,
+  );
   late final ProjectWorkflowStore _projectStore = ProjectWorkflowStore(
     database: widget.database,
+    notifications: _notificationStore,
   );
   late final TeamWorkStore _teamStore = TeamWorkStore(
     database: widget.database,
@@ -51,9 +52,9 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _restoreSession();
+    unawaited(_restoreSession());
     _splashTimer = Timer(AuthGate.splashDuration, () {
-      if (mounted) setState(() => _showSplash = false);
+      if (mounted) setState(() => _splashDone = true);
     });
   }
 
@@ -62,113 +63,58 @@ class _AuthGateState extends State<AuthGate> {
     _splashTimer?.cancel();
     _projectStore.dispose();
     _teamStore.dispose();
+    _notificationStore.dispose();
     super.dispose();
   }
 
   Future<void> _restoreSession() async {
-    if (!kReleaseMode) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final storedRoleName = prefs.getString(_roleStorageKey);
-    final storedStudentName = prefs.getString(_studentNameStorageKey);
-    final storedTeacherName = prefs.getString(_teacherNameStorageKey);
-
+    final account = await _accounts.restoreSession();
     if (!mounted) return;
-
-    setState(() {
-      _currentRole = _parseRole(storedRoleName);
-      _currentStudentName = storedStudentName;
-      _currentTeacherName = storedTeacherName;
-    });
+    setState(() => _restoring = false);
+    if (account != null) _enter(account);
   }
 
-  UserRole? _parseRole(String? storedRoleName) {
-    if (storedRoleName == null) return null;
-    for (final role in UserRole.values) {
-      if (role.name == storedRoleName) return role;
+  /// Masuk ke dashboard. Pada mode cloud, data mulai disinkronkan setelah
+  /// login karena aturan keamanan server hanya mengizinkan pengguna yang masuk.
+  void _enter(UserAccount account) {
+    final cloud = widget.cloud;
+    if (cloud != null) {
+      _projectStore.startSync(cloud);
+      _teamStore.startSync(cloud);
+      _notificationStore.startSync(cloud, account.name);
     }
-    return null;
+    setState(() => _account = account);
   }
 
-  Future<void> _persistSession({
-    required UserRole role,
-    String? studentName,
-    String? teacherName,
-  }) async {
-    if (!kReleaseMode) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_roleStorageKey, role.name);
-
-    if (studentName == null) {
-      await prefs.remove(_studentNameStorageKey);
-    } else {
-      await prefs.setString(_studentNameStorageKey, studentName);
-    }
-
-    if (teacherName == null) {
-      await prefs.remove(_teacherNameStorageKey);
-    } else {
-      await prefs.setString(_teacherNameStorageKey, teacherName);
-    }
-  }
-
-  Future<void> _clearSession() async {
-    if (!kReleaseMode) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_roleStorageKey);
-    await prefs.remove(_studentNameStorageKey);
-    await prefs.remove(_teacherNameStorageKey);
+  Future<void> _leave() async {
+    _projectStore.stopSync();
+    _teamStore.stopSync();
+    _notificationStore.stopSync();
+    await _accounts.signOut();
+    if (!mounted) return;
+    setState(() => _account = null);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) return const SplashScreen();
+    // Splash tetap tampil sampai sesi sebelumnya selesai diperiksa.
+    if (!_splashDone || _restoring) return const SplashScreen();
 
-    final role = _currentRole;
-    if (role == null) {
-      return LoginScreen(
-        studentAccounts: _studentAccounts,
-        onRegister: (account) {
-          setState(() => _studentAccounts.add(account));
-          unawaited(
-            widget.database?.writeList(LocalDatabase.studentAccountsKey, [
-              for (final item in _studentAccounts) item.toJson(),
-            ]),
-          );
-        },
-        onLogin: (role, {studentName, teacherName}) async {
-          await _persistSession(
-            role: role,
-            studentName: studentName,
-            teacherName: teacherName,
-          );
-          if (!mounted) return;
-          setState(() {
-            _currentRole = role;
-            _currentStudentName = studentName;
-            _currentTeacherName = teacherName;
-          });
-        },
-      );
+    final account = _account;
+    if (account == null) {
+      return LoginScreen(accounts: _accounts, onSignedIn: _enter);
     }
 
+    final isTeacher = account.role == UserRole.teacher;
     return DashboardScreen(
-      role: role,
-      studentName: _currentStudentName,
-      teacherName: _currentTeacherName,
+      role: account.role,
+      studentName: isTeacher ? null : account.name,
+      teacherName: isTeacher ? account.name : null,
+      email: account.email,
       projectStore: _projectStore,
       teamStore: _teamStore,
-      onLogout: () async {
-        await _clearSession();
-        if (!mounted) return;
-        setState(() {
-          _currentRole = null;
-          _currentStudentName = null;
-          _currentTeacherName = null;
-        });
-      },
+      notificationStore: _notificationStore,
+      onLogout: _leave,
     );
   }
 }

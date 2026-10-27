@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
-import '../models/student_demo_account.dart';
+import '../data/account_service.dart';
 import '../models/user_role.dart';
 import '../widgets/auth_widgets.dart';
 import 'registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
-    required this.onLogin,
-    required this.onRegister,
-    required this.studentAccounts,
+    required this.accounts,
+    required this.onSignedIn,
     super.key,
   });
 
-  final void Function(UserRole role, {String? studentName, String? teacherName})
-  onLogin;
-  final ValueChanged<StudentDemoAccount> onRegister;
-  final List<StudentDemoAccount> studentAccounts;
+  final AccountService accounts;
+  final ValueChanged<UserAccount> onSignedIn;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -29,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   UserRole _selectedRole = UserRole.student;
   bool _obscurePassword = true;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -144,11 +142,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 28),
                     FilledButton(
                       key: const Key('login_submit'),
-                      onPressed: _submit,
+                      onPressed: _busy ? null : _submit,
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                       ),
-                      child: const Text('Masuk'),
+                      child: _busy
+                          ? const SizedBox.square(
+                              dimension: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Masuk'),
                     ),
                     const SizedBox(height: 16),
                     if (isStudent)
@@ -193,18 +199,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _openRegistration() async {
-    final account = await Navigator.of(context).push<StudentDemoAccount>(
+    final registration = await Navigator.of(context).push<StudentRegistration>(
       MaterialPageRoute(
-        builder: (context) =>
-            RegistrationScreen(existingAccounts: widget.studentAccounts),
+        builder: (context) => RegistrationScreen(accounts: widget.accounts),
       ),
     );
-    if (account == null || !mounted) return;
+    if (registration == null || !mounted) return;
 
-    widget.onRegister(account);
     setState(() {
       _selectedRole = UserRole.student;
-      _identifierController.text = account.nim;
+      _identifierController.text = registration.nim;
     });
     _showMessage(
       const SnackBar(
@@ -215,42 +219,23 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _submit() async {
+    if (_busy || !_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
-    if (_selectedRole == UserRole.student) {
-      final identifier = _identifierController.text.trim();
-      StudentDemoAccount? account;
-      for (final candidate in widget.studentAccounts) {
-        if (candidate.matchesIdentifier(identifier)) {
-          account = candidate;
-          break;
-        }
-      }
-
-      if (account != null &&
-          !account.verifyPassword(_passwordController.text)) {
-        _showMessage(const SnackBar(content: Text('Kata sandi tidak sesuai.')));
-        return;
-      }
-      if (account == null && widget.studentAccounts.isNotEmpty) {
-        _showMessage(
-          const SnackBar(
-            content: Text('Akun siswa tidak ditemukan. Periksa data masuk.'),
-          ),
-        );
-        return;
-      }
-
-      widget.onLogin(_selectedRole, studentName: account?.fullName);
-      return;
+    setState(() => _busy = true);
+    try {
+      final account = await widget.accounts.signIn(
+        role: _selectedRole,
+        identifier: _identifierController.text,
+        password: _passwordController.text,
+      );
+      if (mounted) widget.onSignedIn(account);
+    } on AccountException catch (error) {
+      if (mounted) _showMessage(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-
-    widget.onLogin(
-      _selectedRole,
-      teacherName: _teacherNameForEmail(_identifierController.text.trim()),
-    );
   }
 
   void _showMessage(SnackBar message) {
@@ -267,11 +252,5 @@ class _LoginScreenState extends State<LoginScreen> {
     return _isValidEmail(value) ||
         RegExp(r'^\d{6,20}$').hasMatch(value) ||
         RegExp(r'^[a-zA-Z0-9._-]{3,30}$').hasMatch(value);
-  }
-
-  String _teacherNameForEmail(String email) {
-    return email.toLowerCase() == 'siti.rahmawati@school.id'
-        ? 'Siti Rahmawati'
-        : 'Budi Santoso';
   }
 }
