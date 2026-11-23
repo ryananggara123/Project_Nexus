@@ -27,10 +27,10 @@ Siswa yang ingin ikut lomba atau membuat proyek sering kesulitan menemukan rekan
 | Lamaran & seleksi anggota | Siswa melamar sekali per proyek. Ketua menerima atau menolak pelamar dan dapat menutup rekrutmen. Jumlah anggota tidak dibatasi. |
 | Workspace tim | Papan tugas To-Do, In Progress, dan Done yang hanya dapat dibuka anggota tim dan guru pendamping. Tugas dapat ditambah, dipindah, diedit, dan dihapus. |
 | Portofolio & lencana | Tugas yang selesai tercatat otomatis sebagai kontribusi dan diberi lencana apresiasi. |
-| Foto karya | Karya portofolio dapat diberi foto dari kamera atau galeri (pemilih berkas di browser). Foto diperkecil, dibatasi 2 MB, dan disimpan di database lokal. Karya milik sendiri dapat diedit (termasuk mengganti atau menghapus foto) dan dihapus. |
+| Foto karya | Karya portofolio dapat diberi foto dari kamera atau galeri (pemilih berkas di browser). Foto diperkecil, dibatasi 700 KB, lalu disimpan di database lokal dan di Firestore sehingga tampil di semua perangkat. Karya milik sendiri dapat diedit (termasuk mengganti atau menghapus foto) dan dihapus. |
 | Katalog prestasi & profil | Etalase prestasi sekolah serta profil yang dapat diedit (keahlian, minat, waktu luang). |
 | Sinkronisasi realtime | Proyek, lamaran, tugas Workspace, dan notifikasi disimpan di Cloud Firestore dan langsung muncul di perangkat lain tanpa memuat ulang. Database lokal (Hive) tetap menyimpan salinan sebagai cache offline. |
-| Pusat notifikasi | Lonceng dengan lencana jumlah belum dibaca. Guru diberi tahu saat ada draf atau revisi baru; siswa saat proyeknya disetujui atau ditolak, ada pelamar baru, lamarannya diputuskan, atau mendapat tugas baru. Notifikasi yang tiba saat aplikasi terbuka juga muncul sebagai pesan singkat. |
+| Pusat notifikasi | Lonceng dengan lencana jumlah belum dibaca. Guru diberi tahu saat ada draf atau revisi baru; siswa saat proyeknya disetujui atau ditolak, ada pelamar baru, lamarannya diputuskan, atau mendapat tugas baru. Notifikasi yang tiba saat aplikasi terbuka muncul sebagai pesan singkat; di Android, notifikasi yang tiba saat aplikasi di latar belakang muncul di bilah notifikasi HP. |
 | Aturan keamanan | `firestore.rules` membatasi akses sesuai peran: hanya pengguna yang masuk yang dapat membaca data, siswa tidak dapat menyetujui proyek atau mengubah perannya, dan notifikasi hanya dapat dibaca penerimanya. |
 | Mode lokal | Bila Firebase tidak tersedia (misalnya Windows desktop), aplikasi tetap berjalan dengan akun dan data di database lokal. Kata sandi akun lokal disimpan sebagai hash SHA-256. |
 
@@ -70,6 +70,7 @@ Tampilan pada layar lebar (navigasi samping):
 - **Hive CE** sebagai database lokal dan cache offline (IndexedDB di browser, berkas di Android)
 - **crypto** (SHA-256) untuk hash kata sandi akun siswa
 - **image_picker** untuk mengambil foto karya dari kamera atau galeri
+- **flutter_local_notifications** untuk notifikasi sistem Android
 - **shared_preferences** untuk sesi login dan preferensi rekomendasi
 - **flutter_test** untuk unit test dan widget test
 
@@ -94,7 +95,7 @@ lib/
     │   ├── screens/
     │   └── widgets/
     └── notifications/            # model, penyimpanan, dan pusat notifikasi
-test/                             # 43 unit test dan 29 widget test
+test/                             # 46 unit test dan 30 widget test
 firestore.rules                   # aturan keamanan Cloud Firestore
 docs/screenshots/                 # tangkapan layar untuk README
 ```
@@ -134,13 +135,14 @@ Untuk melihat sinkronisasi realtime, buka aplikasi di dua jendela browser (misal
 
 ```bash
 flutter analyze   # analisis statis: No issues found
-flutter test      # 72 pengujian: All tests passed
+flutter test      # 76 pengujian: All tests passed
 ```
 
 ## Batasan prototipe
 
-- Karya portofolio dan fotonya masih tersimpan di perangkat masing-masing, karena Firebase Storage memerlukan paket Blaze berbayar.
-- Notifikasi berupa notifikasi di dalam aplikasi; notifikasi push saat aplikasi tertutup belum tersedia.
+- Foto karya disimpan sebagai base64 di Firestore (bukan Firebase Storage yang memerlukan paket Blaze berbayar), sehingga ukurannya dibatasi 700 KB.
+- Notifikasi sistem Android tampil selama aplikasi masih berjalan di latar belakang; notifikasi push saat aplikasi ditutup sepenuhnya memerlukan server (Cloud Functions) dan belum tersedia.
+- Karya contoh milik siswa fiktif tidak tersinkron ke server karena aturan keamanan hanya mengizinkan pemilik karya mengunggahnya.
 - Papan tugas satu proyek disimpan sebagai satu dokumen. Bila dua anggota mengubahnya pada saat yang sama, perubahan terakhir yang dipakai.
 - Pengguna dikenali lewat nama lengkap di data proyek, sehingga nama siswa sebaiknya unik.
 - Prototipe ini belum ditujukan untuk menyimpan data siswa yang sensitif.
@@ -151,13 +153,14 @@ flutter test      # 72 pengujian: All tests passed
 |---|---|---|
 | 1 | Database lokal (Hive CE) untuk proyek, lamaran, tugas Workspace, portofolio, dan akun siswa, beserta hash kata sandi dan pengujian persistensi | Selesai |
 | 2 | Unggah foto karya portofolio dari kamera atau galeri, disimpan di database lokal | Selesai |
-| 3 | Firebase Authentication dan sinkronisasi realtime Cloud Firestore dengan aturan keamanan, pusat notifikasi, serta edit dan hapus karya portofolio dan tugas Workspace | Selesai |
+| 3–4 | Firebase Authentication dan sinkronisasi realtime Cloud Firestore dengan aturan keamanan, pusat notifikasi, edit dan hapus karya portofolio dan tugas Workspace, sinkronisasi karya beserta fotonya, dan notifikasi sistem Android | Selesai |
 
 ## Rencana menuju UAS
 
-1. Notifikasi push dengan Firebase Cloud Messaging agar pemberitahuan tetap sampai saat aplikasi tertutup.
-2. Sinkronisasi portofolio ke cloud, termasuk penyimpanan foto karya.
-3. Pengujian pada emulator dan perangkat Android fisik, termasuk kamera dan sinkronisasi antara HP dan browser.
+1. Pengujian pada HP Android fisik, termasuk kamera, notifikasi sistem, dan sinkronisasi antara HP dan browser.
+2. Pengujian penerimaan bersama pengguna (siswa dan guru) serta perbaikan berdasarkan masukan.
+3. Penyempurnaan tampilan dan aksesibilitas.
+4. Persiapan presentasi dan dokumentasi akhir UAS.
 
 ## Penggunaan AI
 
