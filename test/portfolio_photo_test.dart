@@ -70,7 +70,7 @@ void main() {
     );
   });
 
-  testWidgets('photo larger than 2 MB is rejected', (
+  testWidgets('photo larger than 700 KB is rejected', (
     WidgetTester tester,
   ) async {
     _useTallPhone(tester);
@@ -84,7 +84,7 @@ void main() {
     await tester.tap(find.byKey(const Key('portfolio_photo_camera')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Ukuran foto maksimal 2 MB.'), findsOneWidget);
+    expect(find.text('Ukuran foto maksimal 700 KB.'), findsOneWidget);
     expect(find.byKey(const Key('portfolio_photo_preview')), findsNothing);
   });
 

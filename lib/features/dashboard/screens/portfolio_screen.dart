@@ -510,7 +510,7 @@ class _AddPortfolioItemDialogState extends State<_AddPortfolioItemDialog> {
       final photo = await PhotoPicker.instance.pick(source);
       if (!mounted || photo == null) return;
       if (photo.length > PhotoPicker.maxBytes) {
-        setState(() => _photoError = 'Ukuran foto maksimal 2 MB.');
+        setState(() => _photoError = 'Ukuran foto maksimal 700 KB.');
         return;
       }
       setState(() => _photo = photo);

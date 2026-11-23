@@ -8,8 +8,9 @@ enum PhotoSource { camera, gallery }
 abstract class PhotoPicker {
   static PhotoPicker instance = ImagePickerPhotoPicker();
 
-  /// Ukuran maksimal foto setelah dikompres.
-  static const maxBytes = 2 * 1024 * 1024;
+  /// Ukuran maksimal foto setelah dikompres. Foto disimpan sebagai base64 di
+  /// satu dokumen Firestore (batas 1 MB), sehingga isi aslinya dibatasi 700 KB.
+  static const maxBytes = 700 * 1024;
 
   /// Mengembalikan isi foto, atau `null` bila pengguna membatalkan.
   Future<Uint8List?> pick(PhotoSource source);
@@ -27,10 +28,10 @@ class ImagePickerPhotoPicker implements PhotoPicker {
         PhotoSource.camera => ImageSource.camera,
         PhotoSource.gallery => ImageSource.gallery,
       },
-      // Foto diperkecil dan dikompres agar database lokal tetap ringan.
-      maxWidth: 1280,
-      maxHeight: 1280,
-      imageQuality: 75,
+      // Foto diperkecil dan dikompres agar ringan disimpan dan disinkronkan.
+      maxWidth: 1080,
+      maxHeight: 1080,
+      imageQuality: 70,
     );
     return file?.readAsBytes();
   }
