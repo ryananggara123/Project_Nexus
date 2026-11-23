@@ -9,7 +9,8 @@ plugins {
 
 android {
     namespace = "com.example.project_nexus"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_local_notifications 23 dan androidx.core 1.19 memerlukan SDK 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
