@@ -96,6 +96,30 @@ service cloud.firestore {
         && isMember();
     }
 
+    // Karya portofolio: dapat dilihat semua pengguna yang masuk, tetapi hanya
+    // pemiliknya yang dapat menambah, mengubah, dan menghapus.
+    match /portfolio_items/{itemId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.id == itemId
+        && request.resource.data.owner == me().fullName;
+      allow update: if signedIn()
+        && resource.data.owner == me().fullName
+        && unchanged(['id', 'owner']);
+      allow delete: if signedIn() && resource.data.owner == me().fullName;
+    }
+
+    // Foto karya (base64). Foto tidak diubah, melainkan diganti dengan foto baru.
+    match /portfolio_photos/{photoId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.id == photoId
+        && request.resource.data.owner == me().fullName
+        && request.resource.data.data.size() < 1000000;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.owner == me().fullName;
+    }
+
     // Notifikasi hanya dapat dibaca penerimanya. Pengirim harus diri sendiri,
     // dan penerima hanya dapat menandai notifikasi sebagai sudah dibaca.
     match /notifications/{notificationId} {
