@@ -128,6 +128,11 @@ mixin CloudSync on ChangeNotifier {
   void upload(String collection, String id, Map<String, dynamic> data) =>
       unawaited(_cloud?.set(collection, id, data).catchError(_reportError));
 
+  /// Menghapus satu dokumen di server tanpa menunggu.
+  @protected
+  void removeRemote(String collection, String id) =>
+      unawaited(_cloud?.delete(collection, id).catchError(_reportError));
+
   void stopSync() {
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());

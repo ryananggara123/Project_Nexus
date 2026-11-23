@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/cloud/cloud_store.dart';
@@ -9,19 +12,22 @@ import 'workspace_task.dart';
 /// Menyimpan tugas Workspace per proyek dan karya portofolio siswa.
 /// Data ini dulu disimpan di layar Beranda sehingga hilang setiap kali
 /// pengguna keluar; kini dikelola di sini dan disimpan ke database lokal.
-/// Tugas Workspace juga disinkronkan ke server agar seluruh anggota tim
-/// melihat papan tugas yang sama; portofolio (berisi foto) tetap lokal.
+/// Tugas Workspace dan karya portofolio (beserta fotonya) juga disinkronkan
+/// ke server agar terlihat sama di semua perangkat.
 class TeamWorkStore extends ChangeNotifier with CloudSync {
   TeamWorkStore({this.database}) {
     _restore();
   }
 
   static const workspacesCollection = 'workspaces';
+  static const portfolioItemsCollection = 'portfolio_items';
+  static const portfolioPhotosCollection = 'portfolio_photos';
 
   final LocalDatabase? database;
   final Map<String, List<WorkspaceTask>> _tasks = {};
   final List<PortfolioItem> _portfolioItems = [];
   final Map<String, Uint8List> _images = {};
+  final Set<String> _downloading = {};
   Future<void> _lastSave = Future.value();
 
   /// Selesai ketika penyimpanan terakhir ke database sudah tertulis.
@@ -73,19 +79,16 @@ class TeamWorkStore extends ChangeNotifier with CloudSync {
   /// Menambah karya. Bila [image] diisi, foto disimpan di database lokal dan
   /// karya menyimpan ID fotonya.
   void addPortfolioItem(PortfolioItem item, {Uint8List? image}) {
-    var saved = item;
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    var saved = item.copyWith(id: item.id ?? 'item-$stamp');
     Future<void>? imageWrite;
     if (image != null) {
-      final imageId = 'img-${DateTime.now().microsecondsSinceEpoch}';
-      _images[imageId] = image;
-      saved = item.copyWith(imageId: imageId);
-      imageWrite = database?.writeBytes(
-        LocalDatabase.portfolioImageKey(imageId),
-        image,
-      );
+      final imageId = 'img-$stamp';
+      imageWrite = _storeImage(imageId, image, owner: item.owner);
+      saved = saved.copyWith(imageId: imageId);
     }
     _portfolioItems.insert(0, saved);
-    _commit();
+    _commit(item: saved);
     if (imageWrite != null) _lastSave = Future.wait([_lastSave, imageWrite]);
   }
 
@@ -107,15 +110,12 @@ class TeamWorkStore extends ChangeNotifier with CloudSync {
       imageId = null;
       if (photo != null) {
         imageId = 'img-${DateTime.now().microsecondsSinceEpoch}';
-        _images[imageId] = photo;
-        final write = database?.writeBytes(
-          LocalDatabase.portfolioImageKey(imageId),
-          photo,
-        );
+        final write = _storeImage(imageId, photo, owner: item.owner);
         if (write != null) writes.add(write);
       }
     }
-    _portfolioItems[index] = PortfolioItem(
+    final updated = _portfolioItems[index] = PortfolioItem(
+      id: item.id,
       owner: item.owner,
       title: edited.title,
       category: edited.category,
@@ -126,35 +126,92 @@ class TeamWorkStore extends ChangeNotifier with CloudSync {
       isContribution: item.isContribution,
       imageId: imageId,
     );
-    _commit();
+    _commit(item: updated);
     if (writes.isNotEmpty) _lastSave = Future.wait([_lastSave, ...writes]);
   }
 
-  /// Menghapus karya beserta fotonya dari database.
+  /// Menghapus karya beserta fotonya dari database dan server.
   void removePortfolioItem(PortfolioItem item) {
     if (!_portfolioItems.remove(item)) return;
     final imageId = item.imageId;
     final writes = imageId == null ? <Future<void>>[] : _deleteImage(imageId);
     _commit();
+    removeRemote(portfolioItemsCollection, item.id!);
     if (writes.isNotEmpty) _lastSave = Future.wait([_lastSave, ...writes]);
   }
 
+  /// Menyimpan foto ke memori dan database lokal, lalu mengirimnya ke server
+  /// sebagai base64 pada dokumennya sendiri.
+  Future<void>? _storeImage(
+    String imageId,
+    Uint8List bytes, {
+    required String owner,
+  }) {
+    _images[imageId] = bytes;
+    _uploadImage(imageId, bytes, owner);
+    return database?.writeBytes(
+      LocalDatabase.portfolioImageKey(imageId),
+      bytes,
+    );
+  }
+
+  void _uploadImage(String imageId, Uint8List bytes, String owner) => upload(
+    portfolioPhotosCollection,
+    imageId,
+    {'id': imageId, 'owner': owner, 'data': base64Encode(bytes)},
+  );
+
   List<Future<void>> _deleteImage(String imageId) {
     _images.remove(imageId);
+    removeRemote(portfolioPhotosCollection, imageId);
     final delete = database?.delete(LocalDatabase.portfolioImageKey(imageId));
     return [?delete];
   }
 
-  /// Foto karya berdasarkan ID; dibaca dari database sekali lalu disimpan di memori.
+  /// Foto karya berdasarkan ID; dibaca dari database sekali lalu disimpan di
+  /// memori. Foto karya dari perangkat lain diunduh dari server saat pertama
+  /// kali dibutuhkan, lalu tampilan diperbarui.
   Uint8List? imageFor(String imageId) {
     final cached = _images[imageId];
     if (cached != null) return cached;
     final stored = database?.readBytes(
       LocalDatabase.portfolioImageKey(imageId),
     );
-    if (stored != null) _images[imageId] = stored;
+    if (stored != null) {
+      _images[imageId] = stored;
+    } else {
+      _downloadImage(imageId);
+    }
     return stored;
   }
+
+  void _downloadImage(String imageId) {
+    final cloud = this.cloud;
+    if (cloud == null || !_downloading.add(imageId)) return;
+    cloud
+        .get(portfolioPhotosCollection, imageId)
+        .then((document) {
+          final data = document?['data'];
+          if (data is! String) return;
+          final bytes = base64Decode(data);
+          _images[imageId] = bytes;
+          unawaited(
+            database?.writeBytes(
+              LocalDatabase.portfolioImageKey(imageId),
+              bytes,
+            ),
+          );
+          notifyListeners();
+        })
+        .catchError((Object error) => debugPrint('Foto gagal diunduh: $error'))
+        .whenComplete(() => _downloading.remove(imageId));
+  }
+
+  /// Karya lama dan data contoh belum memiliki ID; ID dibentuk dari pemilik
+  /// dan judulnya agar sama di semua perangkat.
+  static PortfolioItem _withId(PortfolioItem item) => item.id == null
+      ? item.copyWith(id: PortfolioItem.idFor(item.owner, item.title))
+      : item;
 
   void _restore() {
     final storedTasks = database?.readList(LocalDatabase.workspaceTasksKey);
@@ -173,9 +230,10 @@ class TeamWorkStore extends ChangeNotifier with CloudSync {
       }
     }
     _portfolioItems.addAll(
-      storedItems == null
-          ? samplePortfolioItems
-          : decodeAll(storedItems, PortfolioItem.tryFromJson),
+      (storedItems == null
+              ? samplePortfolioItems
+              : decodeAll(storedItems, PortfolioItem.tryFromJson))
+          .map(_withId),
     );
     if (storedTasks == null || storedItems == null) _persist();
   }
@@ -196,11 +254,14 @@ class TeamWorkStore extends ChangeNotifier with CloudSync {
   }
 
   /// [projectId] diisi bila tugas proyek itu berubah agar papan tugasnya
-  /// dikirim ke server.
-  void _commit({String? projectId}) {
+  /// dikirim ke server; [item] diisi bila sebuah karya berubah.
+  void _commit({String? projectId, PortfolioItem? item}) {
     notifyListeners();
     _persist();
     if (projectId != null) _uploadWorkspace(projectId);
+    if (item != null) {
+      upload(portfolioItemsCollection, item.id!, item.toJson());
+    }
   }
 
   /// Satu dokumen per proyek berisi seluruh tugasnya. Bila dua anggota
@@ -211,9 +272,30 @@ class TeamWorkStore extends ChangeNotifier with CloudSync {
         'tasks': [for (final task in tasksFor(projectId)) task.toJson()],
       });
 
-  /// Mulai sinkronisasi realtime papan tugas seluruh proyek.
+  /// Mulai sinkronisasi realtime papan tugas dan karya portofolio.
   void startSync(CloudStore cloud) {
     beginSync(cloud);
+    listenRemote(portfolioItemsCollection, (documents) {
+      if (documents.isEmpty) {
+        // Server masih kosong: karya di perangkat ini menjadi data awal.
+        for (final item in _portfolioItems) {
+          final imageId = item.imageId;
+          final photo = imageId == null ? null : imageFor(imageId);
+          if (photo != null) _uploadImage(imageId!, photo, item.owner);
+          upload(portfolioItemsCollection, item.id!, item.toJson());
+        }
+        return;
+      }
+      final remote = [
+        ...decodeAll(documents, PortfolioItem.tryFromJson).map(_withId),
+      ];
+      final merged = mergeById(_portfolioItems, remote, (item) => item.id!);
+      _portfolioItems
+        ..clear()
+        ..addAll(merged);
+      notifyListeners();
+      _persist();
+    });
     listenRemote(workspacesCollection, (documents) {
       if (documents.isEmpty) {
         // Server masih kosong: papan tugas di perangkat ini menjadi data awal.

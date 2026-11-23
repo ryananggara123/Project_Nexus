@@ -22,8 +22,11 @@ class PortfolioItem {
     required this.color,
     this.isContribution = false,
     this.imageId,
+    this.id,
   });
 
+  /// ID karya untuk sinkronisasi. Karya lama tanpa ID memakai [idFor].
+  final String? id;
   final String owner;
   final String title;
   final String category;
@@ -36,12 +39,22 @@ class PortfolioItem {
   /// ID foto karya di database lokal; `null` bila karya tidak memiliki foto.
   final String? imageId;
 
+  /// ID tetap dari pemilik dan judul, sehingga data contoh dan karya lama
+  /// mendapat ID yang sama di semua perangkat.
+  static String idFor(String owner, String title) {
+    String slug(String text) =>
+        text.trim().toLowerCase().replaceAll(RegExp('[^a-z0-9]+'), '-');
+    return '${slug(owner)}__${slug(title)}';
+  }
+
   PortfolioItem copyWith({
+    String? id,
     String? owner,
     bool? isContribution,
     String? imageId,
   }) {
     return PortfolioItem(
+      id: id ?? this.id,
       owner: owner ?? this.owner,
       title: title,
       category: category,
@@ -55,6 +68,7 @@ class PortfolioItem {
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'owner': owner,
     'title': title,
     'category': category,
@@ -75,6 +89,7 @@ class PortfolioItem {
   static PortfolioItem? tryFromJson(Map<String, dynamic> json) {
     try {
       return PortfolioItem(
+        id: json['id'] as String?,
         owner: json['owner'] as String,
         title: json['title'] as String,
         category: json['category'] as String,
