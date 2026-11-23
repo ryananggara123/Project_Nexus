@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../../auth/widgets/auth_widgets.dart';
+import '../../notifications/data/system_notifier.dart';
 import '../../notifications/models/app_notification.dart';
 import '../../notifications/models/notification_store.dart';
 import '../../notifications/widgets/notification_center.dart';
@@ -165,11 +166,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     recipient: _notificationRecipient,
   );
 
-  /// Notifikasi yang tiba dari perangkat lain langsung diumumkan.
+  /// Notifikasi yang tiba dari perangkat lain langsung diumumkan: di bilah
+  /// notifikasi perangkat bila aplikasi sedang di latar belakang, atau sebagai
+  /// pesan singkat bila aplikasi sedang dibuka.
   void _announce(AppNotification notification) {
     if (!mounted ||
         notification.recipient.toLowerCase() !=
             _notificationRecipient.toLowerCase()) {
+      return;
+    }
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state != null && state != AppLifecycleState.resumed) {
+      unawaited(SystemNotifier.instance.show(notification));
       return;
     }
     _showMessage(

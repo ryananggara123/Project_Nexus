@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
@@ -12,12 +13,14 @@ import 'features/auth/data/account_service.dart';
 import 'features/auth/data/cloud_account_service.dart';
 import 'features/auth/data/firebase_auth_backend.dart';
 import 'features/auth/screens/auth_gate.dart';
+import 'features/notifications/data/system_notifier.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final database = await _openDatabase();
   final firebase = await _connectFirebase();
+  await _enableSystemNotifications();
   runApp(
     ProjectNexusApp(
       database: database,
@@ -58,6 +61,17 @@ _connectFirebase() async {
   } on Object catch (error) {
     debugPrint('Firebase tidak tersedia, memakai mode lokal: $error');
     return null;
+  }
+}
+
+/// Notifikasi sistem hanya dipasang di Android. Bila gagal (misalnya izin
+/// ditolak), notifikasi tetap tampil di dalam aplikasi.
+Future<void> _enableSystemNotifications() async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+  try {
+    SystemNotifier.instance = await AndroidSystemNotifier.create();
+  } on Object catch (error) {
+    debugPrint('Notifikasi sistem tidak tersedia: $error');
   }
 }
 

@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Izin menampilkan notifikasi sistem (Android 13 ke atas). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="project_nexus"
         android:name="${applicationName}"
