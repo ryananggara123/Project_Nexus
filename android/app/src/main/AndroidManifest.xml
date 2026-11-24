@@ -2,7 +2,7 @@
     <!-- Izin menampilkan notifikasi sistem (Android 13 ke atas). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="project_nexus"
+        android:label="ProjectNexus"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

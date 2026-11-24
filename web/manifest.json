@@ -1,11 +1,11 @@
 {
-    "name": "project_nexus",
-    "short_name": "project_nexus",
+    "name": "ProjectNexus",
+    "short_name": "ProjectNexus",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#087E8B",
+    "theme_color": "#087E8B",
+    "description": "Platform team-matching dan inkubator proyek kolaborasi siswa.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
