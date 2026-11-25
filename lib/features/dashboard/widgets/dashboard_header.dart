@@ -160,100 +160,204 @@ class HeroBanner extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF102F35),
+            ProjectNexusColors.tealDeep,
             ProjectNexusColors.tealDark,
             Color(0xFF176B68),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: ProjectNexusColors.tealDark.withValues(alpha: 0.16),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppShadows.raised,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Ornamen lingkaran tipis agar latar tidak polos.
+          const Positioned(right: -60, top: -70, child: _HeroRing(size: 200)),
+          const Positioned(right: 40, bottom: -90, child: _HeroRing(size: 150)),
+          Padding(padding: const EdgeInsets.all(22), child: _heroContent(side)),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[leading!, const SizedBox(width: 16)],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        eyebrow,
-                        style: const TextStyle(
-                          color: onHeroAccent,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
+    );
+  }
+
+  Widget _heroContent(Widget? side) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (leading != null) ...[leading!, const SizedBox(width: 16)],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
                     ),
-                    const SizedBox(height: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: ProjectNexusColors.goldLight,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Flexible(
+                          child: Text(
+                            eyebrow,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: onHeroAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 6),
                     Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      subtitle!,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
-                        letterSpacing: -0.3,
+                        color: Color(0xFFE0F0EC),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
                       ),
                     ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle!,
-                        style: const TextStyle(
-                          color: Color(0xFFE0F0EC),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                    if (description != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        description!,
-                        style: const TextStyle(
-                          color: onHeroMuted,
-                          fontSize: 13,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
                   ],
-                ),
+                  if (description != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      description!,
+                      style: const TextStyle(
+                        color: onHeroMuted,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              if (side != null) ...[const SizedBox(width: 14), side],
-            ],
+            ),
+            if (side != null) ...[const SizedBox(width: 14), side],
+          ],
+        ),
+        if (bottom != null) ...[const SizedBox(height: 18), bottom!],
+      ],
+    );
+  }
+}
+
+class _HeroRing extends StatelessWidget {
+  const _HeroRing({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.07),
+            width: 22,
           ),
-          if (bottom != null) ...[const SizedBox(height: 18), bottom!],
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Memunculkan anak dengan efek memudar dan naik sedikit. [index] membuat
+/// beberapa elemen muncul bergantian. Tidak memakai timer, sehingga aman
+/// di pengujian.
+class FadeSlideIn extends StatefulWidget {
+  const FadeSlideIn({required this.child, this.index = 0, super.key});
+
+  final Widget child;
+  final int index;
+
+  @override
+  State<FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  static const _step = 60;
+  static const _duration = 420;
+
+  late final AnimationController _controller;
+  late final Animation<double> _progress;
+
+  @override
+  void initState() {
+    super.initState();
+    final delay = widget.index.clamp(0, 6) * _step;
+    final total = delay + _duration;
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: total),
+    )..forward();
+    _progress = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(delay / total, 1, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _progress,
+      child: widget.child,
+      builder: (context, child) => Opacity(
+        opacity: _progress.value,
+        child: Transform.translate(
+          offset: Offset(0, 16 * (1 - _progress.value)),
+          child: child,
+        ),
       ),
     );
   }
@@ -344,6 +448,11 @@ class MenuPage extends StatelessWidget {
   /// isinya perlu tetap ada walau berada di luar layar.
   final bool lazy;
 
+  List<Widget> get _animated => [
+    for (final (i, child) in children.indexed)
+      FadeSlideIn(index: i, child: child),
+  ];
+
   @override
   Widget build(BuildContext context) {
     if (!lazy) {
@@ -354,7 +463,7 @@ class MenuPage extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [header, ...children],
+              children: [header, ..._animated],
             ),
           ),
         ),
@@ -367,7 +476,7 @@ class MenuPage extends StatelessWidget {
           slivers: [
             SliverPadding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPadding),
-              sliver: SliverList.list(children: [header, ...children]),
+              sliver: SliverList.list(children: [header, ..._animated]),
             ),
           ],
         ),

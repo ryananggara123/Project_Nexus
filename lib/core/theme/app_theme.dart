@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'project_nexus_colors.dart';
 
 abstract final class AppTheme {
-  static const radius = 12.0;
+  static const radius = AppRadius.control;
+  static const fontFamily = 'PlusJakartaSans';
 
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       colorScheme:
           ColorScheme.fromSeed(
             seedColor: ProjectNexusColors.teal,
@@ -19,6 +21,16 @@ abstract final class AppTheme {
             error: ProjectNexusColors.error,
           ),
       scaffoldBackgroundColor: ProjectNexusColors.background,
+      // Transisi antarhalaman yang halus di semua platform.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
     );
 
     OutlineInputBorder border(Color color, [double width = 1]) {
@@ -45,6 +57,7 @@ abstract final class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamily: fontFamily,
           color: ProjectNexusColors.ink,
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -95,11 +108,14 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         color: ProjectNexusColors.surface,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
+        // Bayangan lembut menggantikan garis tepi tebal agar kartu terasa
+        // terangkat dari latar.
+        elevation: 2,
+        shadowColor: ProjectNexusColors.tealDeep.withValues(alpha: 0.10),
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: ProjectNexusColors.border),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: const BorderSide(color: Color(0xFFEDF1F0)),
         ),
       ),
       dividerTheme: const DividerThemeData(
@@ -138,7 +154,7 @@ abstract final class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: ProjectNexusColors.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: base.textTheme.titleLarge?.copyWith(
           color: ProjectNexusColors.ink,
           fontSize: 18,
@@ -166,11 +182,19 @@ abstract final class AppTheme {
               : null,
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: ProjectNexusColors.teal,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: ProjectNexusColors.tealDark,
         foregroundColor: Colors.white,
-        elevation: 2,
-        highlightElevation: 2,
+        elevation: 6,
+        highlightElevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        extendedTextStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
