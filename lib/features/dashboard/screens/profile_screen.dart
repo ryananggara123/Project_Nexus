@@ -7,17 +7,32 @@ import '../models/profile_photo_store.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/project_card.dart';
 
+/// Satu angka ringkasan di profil, misalnya jumlah proyek.
+typedef ProfileStat = ({String label, int value, IconData icon});
+
+/// Lencana pencapaian; [earned] false ditampilkan terkunci.
+typedef ProfileBadge = ({
+  String title,
+  String hint,
+  IconData icon,
+  bool earned,
+});
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({
     required this.header,
     required this.profile,
     required this.onProfileChanged,
+    this.stats = const [],
+    this.badges = const [],
     super.key,
   });
 
   final Widget header;
   final ProfileData profile;
   final ValueChanged<ProfileData> onProfileChanged;
+  final List<ProfileStat> stats;
+  final List<ProfileBadge> badges;
 
   bool get _isStudentProfile => profile.roleLabel.startsWith('Siswa');
 
@@ -26,29 +41,29 @@ class ProfileScreen extends StatelessWidget {
     return MenuPage(
       header: header,
       children: [
-        HeroBanner(
-          eyebrow: 'PROFIL PENGGUNA',
-          title: profile.name,
-          subtitle: profile.roleLabel,
-          description: profile.institution,
-          leading: _ProfileAvatar(
+        _ProfileCover(
+          profile: profile,
+          avatar: _ProfileAvatar(
             name: profile.name,
             initials: _initials(profile.name),
             onTap: () => _showPhotoOptions(context),
           ),
-          trailing: IconButton(
-            key: const Key('profile_edit'),
-            tooltip: 'Edit profil',
-            onPressed: () => _showEditDialog(context),
-            icon: const Icon(Icons.edit_outlined, color: Colors.white),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.14),
-            ),
-          ),
+          onEdit: () => _showEditDialog(context),
         ),
+        if (stats.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _ProfileStats(stats),
+        ],
         const SizedBox(height: 16),
+        if (badges.isNotEmpty)
+          _ProfileSection(
+            title: 'Lencana',
+            icon: Icons.workspace_premium_outlined,
+            child: _BadgeShowcase(badges),
+          ),
         _ProfileSection(
           title: 'Tentang',
+          icon: Icons.person_outline_rounded,
           child: Text(
             profile.bio,
             style: const TextStyle(
@@ -60,6 +75,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         _ProfileSection(
           title: 'Keahlian',
+          icon: Icons.bolt_rounded,
           child: Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -69,6 +85,7 @@ class ProfileScreen extends StatelessWidget {
         if (_isStudentProfile)
           _ProfileSection(
             title: 'Preferensi rekomendasi',
+            icon: Icons.tune_rounded,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -105,6 +122,7 @@ class ProfileScreen extends StatelessWidget {
           ),
         _ProfileSection(
           title: 'Informasi kontak',
+          icon: Icons.contact_mail_outlined,
           child: Column(
             children: [
               _ContactRow(
@@ -230,9 +248,14 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _ProfileSection extends StatelessWidget {
-  const _ProfileSection({required this.title, required this.child});
+  const _ProfileSection({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
 
   final String title;
+  final IconData icon;
   final Widget child;
 
   @override
@@ -246,15 +269,28 @@ class _ProfileSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: ProjectNexusColors.ink,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: ProjectNexusColors.mint,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(icon, size: 16, color: ProjectNexusColors.teal),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               child,
             ],
           ),
@@ -533,26 +569,39 @@ class _ProfileAvatar extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            CircleAvatar(
-              radius: 34,
-              backgroundColor: Colors.white,
-              backgroundImage: photo == null ? null : MemoryImage(photo),
-              child: photo != null
-                  ? null
-                  : Text(
-                      initials,
-                      style: const TextStyle(
-                        color: ProjectNexusColors.tealDark,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [
+                    ProjectNexusColors.goldLight,
+                    ProjectNexusColors.gold,
+                  ],
+                ),
+                boxShadow: AppShadows.raised,
+              ),
+              child: CircleAvatar(
+                radius: 48,
+                backgroundColor: Colors.white,
+                backgroundImage: photo == null ? null : MemoryImage(photo),
+                child: photo != null
+                    ? null
+                    : Text(
+                        initials,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.tealDark,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
+              ),
             ),
             Positioned(
-              right: -2,
-              bottom: -2,
+              right: 2,
+              bottom: 2,
               child: Container(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: ProjectNexusColors.teal,
                   shape: BoxShape.circle,
@@ -560,13 +609,305 @@ class _ProfileAvatar extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.photo_camera_rounded,
-                  size: 14,
+                  size: 16,
                   color: Colors.white,
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Sampul profil: latar gradien berornamen, foto profil besar yang menumpang
+/// di tepi bawah, lalu nama dan peran di tengah.
+class _ProfileCover extends StatelessWidget {
+  const _ProfileCover({
+    required this.profile,
+    required this.avatar,
+    required this.onEdit,
+  });
+
+  final ProfileData profile;
+  final Widget avatar;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              height: 150,
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 52),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    ProjectNexusColors.tealDeep,
+                    ProjectNexusColors.tealDark,
+                    Color(0xFF176B68),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: AppShadows.raised,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  Positioned(left: -40, top: -60, child: _Ring(size: 170)),
+                  Positioned(right: -30, bottom: -70, child: _Ring(size: 190)),
+                  const Positioned(
+                    left: 20,
+                    top: 18,
+                    child: Text(
+                      'PROFIL PENGGUNA',
+                      style: TextStyle(
+                        color: Color(0xFFC9E9E2),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 10,
+                    top: 8,
+                    child: IconButton(
+                      key: const Key('profile_edit'),
+                      tooltip: 'Edit profil',
+                      onPressed: onEdit,
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: Colors.white,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            avatar,
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          profile.name,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: ProjectNexusColors.ink,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: ProjectNexusColors.goldSoft,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          child: Text(
+            profile.roleLabel,
+            style: const TextStyle(
+              color: Color(0xFF8A6512),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          profile.institution,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: ProjectNexusColors.muted, fontSize: 13),
+        ),
+      ],
+    );
+  }
+}
+
+class _Ring extends StatelessWidget {
+  const _Ring({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.07),
+          width: 22,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileStats extends StatelessWidget {
+  const _ProfileStats(this.stats);
+
+  final List<ProfileStat> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              for (final (i, stat) in stats.indexed) ...[
+                if (i > 0) const VerticalDivider(indent: 6, endIndent: 6),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Icon(stat.icon, size: 20, color: ProjectNexusColors.teal),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${stat.value}',
+                        style: const TextStyle(
+                          color: ProjectNexusColors.ink,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        stat.label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lencana yang sudah diraih berwarna emas; yang belum ditampilkan terkunci
+/// beserta petunjuk cara meraihnya.
+class _BadgeShowcase extends StatelessWidget {
+  const _BadgeShowcase(this.badges);
+
+  final List<ProfileBadge> badges;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final badge in badges)
+              SizedBox(width: width, child: _BadgeTile(badge)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BadgeTile extends StatelessWidget {
+  const _BadgeTile(this.badge);
+
+  final ProfileBadge badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final earned = badge.earned;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: earned ? ProjectNexusColors.goldSoft : ProjectNexusColors.field,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: earned
+              ? ProjectNexusColors.goldLight
+              : ProjectNexusColors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: earned
+                  ? const LinearGradient(
+                      colors: [
+                        ProjectNexusColors.goldLight,
+                        ProjectNexusColors.gold,
+                      ],
+                    )
+                  : null,
+              color: earned ? null : const Color(0xFFE4E9E8),
+            ),
+            child: Icon(
+              earned ? badge.icon : Icons.lock_outline_rounded,
+              size: 19,
+              color: earned ? Colors.white : ProjectNexusColors.muted,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  badge.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: earned
+                        ? const Color(0xFF6E5210)
+                        : ProjectNexusColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  badge.hint,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ProjectNexusColors.muted,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

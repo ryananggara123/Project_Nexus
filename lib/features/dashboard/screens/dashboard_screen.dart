@@ -516,10 +516,85 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildProfile() {
+    final name = _profile.name.trim().toLowerCase();
+    bool isMe(String other) => other.trim().toLowerCase() == name;
+    final doneTasks = [
+      for (final entry in _teamStore.taskEntries)
+        for (final task in entry.value)
+          if (task.status == WorkspaceTaskStatus.done) (entry.key, task),
+    ];
+
+    if (_isTeacherView) {
+      final mentored = _projects
+          .where((project) => isMe(project.teacherName))
+          .toList();
+      final mentoredIds = {for (final project in mentored) project.id};
+      return ProfileScreen(
+        header: _appHeader,
+        profile: _profile,
+        onProfileChanged: _onProfileChanged,
+        stats: [
+          (
+            label: 'Proyek didampingi',
+            value: mentored.length,
+            icon: Icons.school_outlined,
+          ),
+          (
+            label: 'Menunggu tinjauan',
+            value: mentored.where((p) => p.statusAcc == 'pending').length,
+            icon: Icons.hourglass_top_rounded,
+          ),
+          (
+            label: 'Tugas tim selesai',
+            value: doneTasks.where((t) => mentoredIds.contains(t.$1)).length,
+            icon: Icons.task_alt_rounded,
+          ),
+        ],
+      );
+    }
+
+    final submitted = _projects.where((p) => isMe(p.leader)).length;
+    final teams = _projects
+        .where((p) => widget.projectStore.isMember(p.id, _profile.name))
+        .where((p) => p.statusAcc == 'approved')
+        .length;
+    final myDone = doneTasks.where((t) => isMe(t.$2.assignee)).length;
+    final works = _teamStore.portfolioItems.where((i) => isMe(i.owner)).length;
     return ProfileScreen(
       header: _appHeader,
       profile: _profile,
       onProfileChanged: _onProfileChanged,
+      stats: [
+        (label: 'Tim proyek', value: teams, icon: Icons.groups_2_outlined),
+        (label: 'Tugas selesai', value: myDone, icon: Icons.task_alt_rounded),
+        (label: 'Karya', value: works, icon: Icons.collections_outlined),
+      ],
+      badges: [
+        (
+          title: 'Inisiator',
+          hint: 'Mengajukan ide proyek pertama',
+          icon: Icons.lightbulb_outline_rounded,
+          earned: submitted > 0,
+        ),
+        (
+          title: 'Kolaborator',
+          hint: 'Bergabung dalam tim proyek',
+          icon: Icons.handshake_outlined,
+          earned: teams > 0,
+        ),
+        (
+          title: 'Langkah Pertama',
+          hint: 'Menyelesaikan tugas pertama',
+          icon: Icons.flag_rounded,
+          earned: myDone > 0,
+        ),
+        (
+          title: 'Kreator',
+          hint: 'Memajang karya di portofolio',
+          icon: Icons.palette_outlined,
+          earned: works > 0,
+        ),
+      ],
     );
   }
 

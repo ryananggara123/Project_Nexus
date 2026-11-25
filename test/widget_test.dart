@@ -529,6 +529,11 @@ void main() {
 
     expect(find.text('Budi Santoso'), findsOneWidget);
     expect(find.text('Guru Pendamping · Teknologi Informasi'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Mentoring'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Mentoring'), findsOneWidget);
   });
 
