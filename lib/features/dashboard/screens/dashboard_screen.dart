@@ -576,11 +576,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomPadding: 120,
       children: [
         HeroBanner(
-          eyebrow: 'RUANG KOLABORASI SISWA',
+          eyebrow: _greeting.toUpperCase(),
           title: 'Halo, $_firstName',
           subtitle: 'Temukan tim yang tepat.',
           description: 'Ide hebat tumbuh bersama keahlian yang beragam.',
-          icon: Icons.groups_2_rounded,
+          leading: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [ProjectNexusColors.goldLight, ProjectNexusColors.gold],
+              ),
+              boxShadow: AppShadows.card,
+            ),
+            child: PersonAvatar(_profile.name, radius: 28),
+          ),
         ),
         const SizedBox(height: 16),
         _buildStudentOverview(),
@@ -608,22 +618,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final approved = myProjects
         .where((project) => project.statusAcc == 'approved')
         .length;
-    return Card(
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            _OverviewMetric(label: 'Pengajuan', value: myProjects.length),
-            const VerticalDivider(indent: 14, endIndent: 14),
-            _OverviewMetric(label: 'Ditinjau', value: underReview),
-            const VerticalDivider(indent: 14, endIndent: 14),
-            _OverviewMetric(label: 'Diterima', value: approved),
-          ],
+    return Row(
+      children: [
+        _OverviewMetric(
+          label: 'Pengajuan',
+          value: myProjects.length,
+          icon: Icons.outbox_rounded,
+          color: ProjectNexusColors.teal,
         ),
-      ),
+        const SizedBox(width: 10),
+        _OverviewMetric(
+          label: 'Ditinjau',
+          value: underReview,
+          icon: Icons.hourglass_top_rounded,
+          color: ProjectNexusColors.warning,
+        ),
+        const SizedBox(width: 10),
+        _OverviewMetric(
+          label: 'Diterima',
+          value: approved,
+          icon: Icons.verified_rounded,
+          color: ProjectNexusColors.gold,
+        ),
+      ],
     );
   }
 
   String get _firstName => _profile.name.trim().split(RegExp(r'\s+')).first;
+
+  /// Sapaan sesuai waktu setempat.
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Selamat pagi';
+    if (hour < 15) return 'Selamat siang';
+    if (hour < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  }
 
   Widget _buildTeacherQueue() {
     final pendingProjects = _projects
@@ -761,13 +791,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (recommendations.isEmpty)
         const _EmptySearchState()
       else
-        ...recommendations.map(
-          (recommendation) => ProjectCard(
+        for (final (index, recommendation) in recommendations.indexed)
+          ProjectCard(
             project: recommendation.project,
             recommendationReason: recommendation.reason,
+            members: widget.projectStore.acceptedMembers(
+              recommendation.project.id,
+            ),
+            // Proyek teratas disorot sebagai yang paling cocok.
+            featured: index == 0 && recommendations.length > 1,
             onDetails: () => _showProjectDetails(recommendation.project),
           ),
-        ),
     ];
   }
 
@@ -1210,38 +1244,64 @@ class _StudentSubmissionCard extends StatelessWidget {
 }
 
 class _OverviewMetric extends StatelessWidget {
-  const _OverviewMetric({required this.label, required this.value});
+  const _OverviewMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   final String label;
   final int value;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          children: [
-            Text(
-              '$value',
-              style: const TextStyle(
-                color: ProjectNexusColors.ink,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                height: 1,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: color),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: ProjectNexusColors.muted,
-                fontSize: 12,
+              const SizedBox(height: 12),
+              // Angka berhitung naik saat Beranda dibuka.
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: value.toDouble()),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOutCubic,
+                builder: (context, animated, _) => Text(
+                  '${animated.round()}',
+                  style: const TextStyle(
+                    color: ProjectNexusColors.ink,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ProjectNexusColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
