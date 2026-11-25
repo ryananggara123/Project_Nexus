@@ -120,6 +120,17 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.owner == me().fullName;
     }
 
+    // Foto profil: terlihat oleh semua pengguna yang masuk, hanya pemiliknya
+    // yang dapat mengganti atau menghapus.
+    match /profile_photos/{photoId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.id == photoId
+        && request.resource.data.owner == me().fullName
+        && request.resource.data.data.size() < 1000000;
+      allow delete: if signedIn() && resource.data.owner == me().fullName;
+    }
+
     // Notifikasi hanya dapat dibaca penerimanya. Pengirim harus diri sendiri,
     // dan penerima hanya dapat menandai notifikasi sebagai sudah dibaca.
     match /notifications/{notificationId} {
