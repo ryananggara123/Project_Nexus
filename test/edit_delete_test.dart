@@ -207,6 +207,47 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Menghubungkan sensor pH ke aplikasi'), findsNothing);
     });
+
+    testWidgets('task can be dragged to another column', (tester) async {
+      // Layar lebar agar ketiga kolom terlihat berdampingan.
+      tester.view.physicalSize = const Size(2400, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      await _login(tester);
+      await tester.tap(find.text('Workspace').last);
+      await tester.pumpAndSettle();
+
+      final todo = find.byKey(const Key('workspace_column_todo'));
+      final done = find.byKey(const Key('workspace_column_done'));
+      final task = find.descendant(
+        of: todo,
+        matching: find.text('Menghubungkan data sensor ke aplikasi'),
+      );
+      await tester.ensureVisible(task);
+      await tester.pumpAndSettle();
+
+      final gesture = await tester.startGesture(tester.getCenter(task));
+      await tester.pump(const Duration(milliseconds: 600));
+      await gesture.moveTo(tester.getCenter(done));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: done,
+          matching: find.text('Menghubungkan data sensor ke aplikasi'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: todo,
+          matching: find.text('Menghubungkan data sensor ke aplikasi'),
+        ),
+        findsNothing,
+      );
+    });
   });
 }
 

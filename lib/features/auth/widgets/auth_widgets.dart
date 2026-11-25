@@ -31,13 +31,18 @@ class BrandMark extends StatelessWidget {
       children: [
         logo,
         const SizedBox(width: 10),
-        const Text(
-          'ProjectNexus',
-          style: TextStyle(
-            color: ProjectNexusColors.ink,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
+        const Flexible(
+          child: Text(
+            'ProjectNexus',
+            maxLines: 1,
+            overflow: TextOverflow.fade,
+            softWrap: false,
+            style: TextStyle(
+              color: ProjectNexusColors.ink,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
           ),
         ),
       ],

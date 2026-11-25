@@ -56,10 +56,13 @@ class WorkspaceScreen extends StatelessWidget {
           description: isTeacherView
               ? 'Pantau pembagian tugas dan progres tim bimbingan.'
               : 'Atur pekerjaan bersama dan wujudkan ide jadi karya.',
-          icon: Icons.view_kanban_rounded,
+          trailing: _ProgressRing(progress: progress),
           bottom: _HeroProgress(
-            progress: progress,
             label: '$completedCount dari ${tasks.length} tugas selesai',
+            counts: {
+              for (final status in WorkspaceTaskStatus.values)
+                status: tasks.where((task) => task.status == status).length,
+            },
           ),
         ),
         if (availableProjects.length > 1) ...[
@@ -101,7 +104,7 @@ class WorkspaceScreen extends StatelessWidget {
         SectionTitle(
           'Papan tugas',
           trailing: '${tasks.length} tugas',
-          subtitle: 'Pilih menu pada kartu untuk memindahkan tugas ke tahap berikutnya.',
+          subtitle: 'Tekan lama kartu lalu geser ke kolom lain, atau pakai menu ⋯ pada kartu.',
         ),
         const SizedBox(height: 12),
         _buildBoard(context),
@@ -367,49 +370,135 @@ class WorkspaceScreen extends StatelessWidget {
   }
 }
 
-class _HeroProgress extends StatelessWidget {
-  const _HeroProgress({required this.progress, required this.label});
+/// Membaca tenggat seperti "15 Okt 2026"; `null` bila bukan tanggal.
+DateTime? parseDueDate(String label) {
+  const months = [
+    'jan', 'feb', 'mar', 'apr', 'mei', 'jun', //
+    'jul', 'agu', 'sep', 'okt', 'nov', 'des',
+  ];
+  final match = RegExp(r'^(\d{1,2})\s+([a-zA-Z]{3})\w*\s+(\d{4})$')
+      .firstMatch(label.trim());
+  if (match == null) return null;
+  final month = months.indexOf(match.group(2)!.toLowerCase()) + 1;
+  if (month == 0) return null;
+  return DateTime(
+    int.parse(match.group(3)!),
+    month,
+    int.parse(match.group(1)!),
+  );
+}
+
+/// Warna setiap tahap papan tugas.
+Color statusColor(WorkspaceTaskStatus status) => switch (status) {
+  WorkspaceTaskStatus.todo => const Color(0xFF6B7C93),
+  WorkspaceTaskStatus.inProgress => ProjectNexusColors.gold,
+  WorkspaceTaskStatus.done => const Color(0xFF2E9E6A),
+};
+
+/// Cincin persentase tugas selesai di hero Workspace.
+class _ProgressRing extends StatelessWidget {
+  const _ProgressRing({required this.progress});
 
   final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: progress),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) => SizedBox.square(
+        dimension: 78,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CircularProgressIndicator(
+              value: value,
+              strokeWidth: 8,
+              strokeCap: StrokeCap.round,
+              backgroundColor: Colors.white.withValues(alpha: 0.14),
+              valueColor: const AlwaysStoppedAnimation(
+                ProjectNexusColors.goldLight,
+              ),
+            ),
+            Center(
+              child: Text(
+                '${(progress * 100).round()}%',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Ringkasan di bawah hero: jumlah tugas per tahap.
+class _HeroProgress extends StatelessWidget {
+  const _HeroProgress({required this.label, required this.counts});
+
   final String label;
+  final Map<WorkspaceTaskStatus, int> counts;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 8,
-                  backgroundColor: Colors.white.withValues(alpha: 0.18),
-                  valueColor: const AlwaysStoppedAnimation(Color(0xFFF1C36D)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '${(progress * 100).round()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
         Text(
           label,
           style: const TextStyle(
-            color: HeroBanner.onHeroMuted,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
           ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final entry in counts.entries)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: entry.key == WorkspaceTaskStatus.todo
+                            ? const Color(0xFFB8C4D4)
+                            : statusColor(entry.key),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${entry.key.label} ${entry.value}',
+                      style: const TextStyle(
+                        color: HeroBanner.onHeroMuted,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
       ],
     );
@@ -434,84 +523,117 @@ class _TaskColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
-      WorkspaceTaskStatus.todo => ProjectNexusColors.muted,
-      WorkspaceTaskStatus.inProgress => ProjectNexusColors.teal,
-      WorkspaceTaskStatus.done => ProjectNexusColors.success,
-    };
-
-    return Container(
-      key: ValueKey('workspace_column_${status.name}'),
-      width: 272,
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDF1F1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    status.label,
-                    style: const TextStyle(
-                      color: ProjectNexusColors.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${tasks.length}',
-                  style: const TextStyle(
-                    color: ProjectNexusColors.muted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+    final color = statusColor(status);
+    return DragTarget<WorkspaceTask>(
+      onWillAcceptWithDetails: (details) => details.data.status != status,
+      onAcceptWithDetails: (details) =>
+          onTaskStatusChanged(details.data, status),
+      builder: (context, candidates, _) {
+        final hovering = candidates.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          key: ValueKey('workspace_column_${status.name}'),
+          width: 264,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: hovering
+                ? color.withValues(alpha: 0.14)
+                : const Color(0xFFEEF2F1),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: hovering ? color : Colors.transparent,
+              width: 1.5,
             ),
           ),
-          const SizedBox(height: 12),
-          if (tasks.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFDCE3E3)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(height: 4, width: double.infinity, color: color),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        status.label,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.ink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                      child: Text(
+                        '${tasks.length}',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Text(
-                'Belum ada tugas di tahap ini.',
-                style: TextStyle(color: ProjectNexusColors.muted, fontSize: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: Column(
+                  children: [
+                    if (tasks.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFD6DEDD)),
+                        ),
+                        child: Text(
+                          hovering
+                              ? 'Lepaskan di sini'
+                              : 'Belum ada tugas di tahap ini.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: ProjectNexusColors.muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      )
+                    else
+                      ...tasks.map(
+                        (task) => _TaskCard(
+                          task: task,
+                          onStatusChanged: (newStatus) =>
+                              onTaskStatusChanged(task, newStatus),
+                          onEdit: () => onEdit(task),
+                          onDelete: () => onDelete(task),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            )
-          else
-            ...tasks.map(
-              (task) => _TaskCard(
-                task: task,
-                onStatusChanged: (newStatus) =>
-                    onTaskStatusChanged(task, newStatus),
-                onEdit: () => onEdit(task),
-                onDelete: () => onDelete(task),
-              ),
-            ),
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -531,115 +653,180 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final card = _content(context);
+    // Tekan lama lalu geser ke kolom lain untuk memindahkan tahap tugas.
+    return LongPressDraggable<WorkspaceTask>(
+      data: task,
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(
+          width: 244,
+          child: Transform.rotate(angle: -0.03, child: card),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: card),
+      child: card,
+    );
+  }
+
+  Widget _content(BuildContext context) {
+    final color = statusColor(task.status);
+    final due = _dueStyle(task);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
       decoration: BoxDecoration(
         color: ProjectNexusColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ProjectNexusColors.border),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: AppShadows.card,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: color),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
+                child: _details(due),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Warna tenggat: merah bila terlambat, oranye bila hari ini, hijau bila
+  /// tugas sudah selesai.
+  static ({Color color, IconData icon}) _dueStyle(WorkspaceTask task) {
+    final label = task.dueLabel.toLowerCase();
+    if (task.status == WorkspaceTaskStatus.done) {
+      return (color: const Color(0xFF2E9E6A), icon: Icons.check_circle_rounded);
+    }
+    final date = parseDueDate(task.dueLabel);
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (label.contains('terlambat') || (date != null && date.isBefore(today))) {
+      return (
+        color: ProjectNexusColors.error,
+        icon: Icons.error_outline_rounded,
+      );
+    }
+    if (label.contains('hari ini') || date == today) {
+      return (color: ProjectNexusColors.warning, icon: Icons.schedule_rounded);
+    }
+    return (
+      color: ProjectNexusColors.muted,
+      icon: Icons.calendar_today_outlined,
+    );
+  }
+
+  Widget _details(({Color color, IconData icon}) due) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  task.title,
+                  style: const TextStyle(
+                    color: ProjectNexusColors.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ),
+            // Nilai menu berupa status (pindah kolom) atau 'edit'/'delete'.
+            PopupMenuButton<Object>(
+              tooltip: 'Opsi tugas',
+              icon: const Icon(
+                Icons.more_horiz_rounded,
+                color: ProjectNexusColors.muted,
+                size: 20,
+              ),
+              onSelected: (value) => switch (value) {
+                WorkspaceTaskStatus status => onStatusChanged(status),
+                'edit' => onEdit(),
+                _ => onDelete(),
+              },
+              itemBuilder: (context) => [
+                for (final status in WorkspaceTaskStatus.values)
+                  if (status != task.status)
+                    PopupMenuItem<Object>(
+                      value: status,
+                      child: Text('Pindahkan ke ${status.label}'),
+                    ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<Object>(
+                  value: 'edit',
+                  child: Text('Edit tugas'),
+                ),
+                const PopupMenuItem<Object>(
+                  value: 'delete',
                   child: Text(
-                    task.title,
-                    style: const TextStyle(
-                      color: ProjectNexusColors.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
+                    'Hapus tugas',
+                    style: TextStyle(color: ProjectNexusColors.error),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            PersonAvatar(task.assignee, radius: 10),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                task.assignee,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ProjectNexusColors.muted,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: due.color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(due.icon, size: 13, color: due.color),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    task.dueLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: due.color,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              ),
-              // Nilai menu berupa status (pindah kolom) atau 'edit'/'delete'.
-              PopupMenuButton<Object>(
-                tooltip: 'Opsi tugas',
-                icon: const Icon(
-                  Icons.more_horiz_rounded,
-                  color: ProjectNexusColors.muted,
-                  size: 20,
-                ),
-                onSelected: (value) => switch (value) {
-                  WorkspaceTaskStatus status => onStatusChanged(status),
-                  'edit' => onEdit(),
-                  _ => onDelete(),
-                },
-                itemBuilder: (context) => [
-                  for (final status in WorkspaceTaskStatus.values)
-                    if (status != task.status)
-                      PopupMenuItem<Object>(
-                        value: status,
-                        child: Text('Pindahkan ke ${status.label}'),
-                      ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem<Object>(
-                    value: 'edit',
-                    child: Text('Edit tugas'),
-                  ),
-                  const PopupMenuItem<Object>(
-                    value: 'delete',
-                    child: Text(
-                      'Hapus tugas',
-                      style: TextStyle(color: ProjectNexusColors.error),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              PersonAvatar(task.assignee, radius: 10),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  task.assignee,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ProjectNexusColors.muted,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const SizedBox(
-                width: 20,
-                child: Icon(
-                  Icons.calendar_today_outlined,
-                  size: 13,
-                  color: ProjectNexusColors.muted,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  task.dueLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ProjectNexusColors.muted,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
