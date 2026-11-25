@@ -26,6 +26,7 @@ void main() {
     for (final (recipient, title) in [
       ('Ryan Anggara Deki', 'Proyek disetujui'),
       ('Ryan Anggara Deki', 'Pelamar baru'),
+      ('Ryan Anggara Deki', 'Lamaran diterima'),
       ('Budi Santoso', 'Draf proyek baru'),
     ]) {
       seed.send(
@@ -43,12 +44,13 @@ void main() {
     await _signIn(tester, 'test@school.id');
 
     final bell = find.byKey(const Key('notification_bell'));
-    expect(find.descendant(of: bell, matching: find.text('2')), findsOneWidget);
+    expect(find.descendant(of: bell, matching: find.text('3')), findsOneWidget);
 
     await tester.tap(bell);
     await tester.pumpAndSettle();
     expect(find.text('Notifikasi'), findsOneWidget);
-    expect(find.text('2 belum dibaca'), findsOneWidget);
+    expect(find.text('3 belum dibaca'), findsOneWidget);
+    expect(find.text('HARI INI'), findsOneWidget);
     expect(find.text('Proyek disetujui'), findsOneWidget);
     expect(find.text('Pelamar baru'), findsOneWidget);
     // Notifikasi milik pengguna lain tidak ikut tampil.
@@ -56,7 +58,13 @@ void main() {
 
     await tester.tap(find.text('Proyek disetujui'));
     await tester.pumpAndSettle();
+    expect(find.text('2 belum dibaca'), findsOneWidget);
+
+    // Digeser ke kiri: ditandai dibaca, tetapi tetap ada di daftar.
+    await tester.drag(find.text('Pelamar baru'), const Offset(-400, 0));
+    await tester.pumpAndSettle();
     expect(find.text('1 belum dibaca'), findsOneWidget);
+    expect(find.text('Pelamar baru'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('notification_mark_all')));
     await tester.pumpAndSettle();

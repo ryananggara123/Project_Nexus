@@ -132,16 +132,23 @@ class _NotificationCenter extends StatelessWidget {
             Expanded(
               child: items.isEmpty
                   ? const _EmptyNotifications()
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: items.length,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1, indent: 72),
-                      itemBuilder: (context, index) => _NotificationTile(
-                        items[index],
-                        now: now,
-                        onTap: () => store.markRead(items[index]),
-                      ),
+                  : ListView(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      children: [
+                        for (final group in _groupByDay(items, now)) ...[
+                          _GroupHeader(group.label),
+                          for (final item in group.items)
+                            _SwipeToRead(
+                              notification: item,
+                              onRead: () => store.markRead(item),
+                              child: _NotificationTile(
+                                item,
+                                now: now,
+                                onTap: () => store.markRead(item),
+                              ),
+                            ),
+                        ],
+                      ],
                     ),
             ),
           ],
@@ -262,6 +269,97 @@ class _EmptyNotifications extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Mengelompokkan notifikasi (sudah terurut terbaru di atas) per hari.
+List<({String label, List<AppNotification> items})> _groupByDay(
+  List<AppNotification> items,
+  DateTime now,
+) {
+  final today = DateTime(now.year, now.month, now.day);
+  String labelOf(DateTime time) {
+    final day = DateTime(time.year, time.month, time.day);
+    final days = today.difference(day).inDays;
+    if (days <= 0) return 'Hari ini';
+    if (days == 1) return 'Kemarin';
+    return 'Sebelumnya';
+  }
+
+  final groups = <({String label, List<AppNotification> items})>[];
+  for (final item in items) {
+    final label = labelOf(item.createdAt);
+    if (groups.isEmpty || groups.last.label != label) {
+      groups.add((label: label, items: []));
+    }
+    groups.last.items.add(item);
+  }
+  return groups;
+}
+
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          color: ProjectNexusColors.muted,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+}
+
+/// Geser notifikasi ke samping untuk menandainya sudah dibaca. Notifikasi
+/// tidak dihapus dari daftar.
+class _SwipeToRead extends StatelessWidget {
+  const _SwipeToRead({
+    required this.notification,
+    required this.onRead,
+    required this.child,
+  });
+
+  final AppNotification notification;
+  final VoidCallback onRead;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (notification.read) return child;
+    final background = Container(
+      color: ProjectNexusColors.teal,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Icon(Icons.done_all_rounded, color: Colors.white),
+          SizedBox(width: 8),
+          Text(
+            'Tandai dibaca',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+    return Dismissible(
+      key: ValueKey('swipe_${notification.id}'),
+      direction: DismissDirection.endToStart,
+      background: background,
+      confirmDismiss: (_) async {
+        onRead();
+        return false;
+      },
+      child: child,
     );
   }
 }
