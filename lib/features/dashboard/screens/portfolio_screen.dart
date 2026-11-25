@@ -95,50 +95,21 @@ class PortfolioScreen extends StatelessWidget {
   }
 
   Widget _buildPortfolioCollection(List<PortfolioItem> visibleItems) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 680) {
-          return Column(
-            children: visibleItems
-                .map(
-                  (item) => _PortfolioCard(
-                    item: item,
-                    showOwner: _isTeacher,
-                    image: _imageOf(item),
-                    onEdit: _canManage(item)
-                        ? () => _showEditItemDialog(context, item)
-                        : null,
-                    onDelete: _canManage(item)
-                        ? () => _confirmDelete(context, item)
-                        : null,
-                  ),
-                )
-                .toList(),
-          );
-        }
-        final cardWidth = (constraints.maxWidth - 12) / 2;
-        return Wrap(
-          spacing: 12,
-          children: visibleItems
-              .map(
-                (item) => SizedBox(
-                  width: cardWidth,
-                  child: _PortfolioCard(
-                    item: item,
-                    showOwner: _isTeacher,
-                    image: _imageOf(item),
-                    onEdit: _canManage(item)
-                        ? () => _showEditItemDialog(context, item)
-                        : null,
-                    onDelete: _canManage(item)
-                        ? () => _confirmDelete(context, item)
-                        : null,
-                  ),
-                ),
-              )
-              .toList(),
-        );
-      },
+    return _PortfolioGallery(
+      items: visibleItems,
+      cardBuilder: (item) => Builder(
+        builder: (context) => _PortfolioCard(
+          item: item,
+          showOwner: _isTeacher,
+          image: _imageOf(item),
+          onEdit: _canManage(item)
+              ? () => _showEditItemDialog(context, item)
+              : null,
+          onDelete: _canManage(item)
+              ? () => _confirmDelete(context, item)
+              : null,
+        ),
+      ),
     );
   }
 
@@ -203,6 +174,98 @@ class PortfolioScreen extends StatelessWidget {
   }
 }
 
+/// Galeri karya dua kolom bergaya masonry dengan filter kategori.
+class _PortfolioGallery extends StatefulWidget {
+  const _PortfolioGallery({required this.items, required this.cardBuilder});
+
+  final List<PortfolioItem> items;
+  final Widget Function(PortfolioItem item) cardBuilder;
+
+  @override
+  State<_PortfolioGallery> createState() => _PortfolioGalleryState();
+}
+
+class _PortfolioGalleryState extends State<_PortfolioGallery> {
+  static const _all = 'Semua';
+  String _category = _all;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = {
+      for (final item in widget.items)
+        if (!item.isContribution) item.category,
+      if (widget.items.any((item) => item.isContribution)) 'Kontribusi',
+    }.toList();
+    if (!categories.contains(_category)) _category = _all;
+    final shown = widget.items.where((item) {
+      if (_category == _all) return true;
+      if (_category == 'Kontribusi') return item.isContribution;
+      return !item.isContribution && item.category == _category;
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (categories.length > 1) ...[
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final category in [_all, ...categories])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(category),
+                      selected: _category == category,
+                      showCheckmark: false,
+                      selectedColor: ProjectNexusColors.tealDark,
+                      labelStyle: TextStyle(
+                        color: _category == category
+                            ? Colors.white
+                            : ProjectNexusColors.ink,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      onSelected: (_) => setState(() => _category = category),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 680 ? 3 : 2;
+            const gap = 12.0;
+            // Karya dibagi bergantian ke setiap kolom (masonry sederhana).
+            final lanes = List.generate(columns, (_) => <Widget>[]);
+            for (final (i, item) in shown.indexed) {
+              lanes[i % columns].add(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: gap),
+                  child: widget.cardBuilder(item),
+                ),
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final (i, lane) in lanes.indexed) ...[
+                  if (i > 0) const SizedBox(width: gap),
+                  Expanded(child: Column(children: lane)),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Kartu galeri: foto (atau sampul gradien bila tanpa foto), judul, dan
+/// kategori. Diketuk untuk membuka detail karya.
 class _PortfolioCard extends StatelessWidget {
   const _PortfolioCard({
     required this.item,
@@ -218,135 +281,339 @@ class _PortfolioCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
+  String get _heroTag => 'portfolio_${item.id ?? item.title}_${item.owner}';
+
   @override
   Widget build(BuildContext context) {
     final image = this.image;
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (image != null)
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image.memory(
-                image,
-                key: Key('portfolio_image_${item.title}'),
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                errorBuilder: (context, error, stackTrace) => const ColoredBox(
-                  color: ProjectNexusColors.field,
-                  child: Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: ProjectNexusColors.muted,
-                    ),
-                  ),
-                ),
-              ),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => _PortfolioDetailPage(
+              item: item,
+              image: image,
+              heroTag: _heroTag,
             ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: item.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(item.icon, color: item.color, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (showOwner) ...[
-                        Text(
-                          item.owner,
-                          style: const TextStyle(
-                            color: ProjectNexusColors.teal,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                Hero(
+                  tag: _heroTag,
+                  child: image != null
+                      ? AspectRatio(
+                          aspectRatio: 4 / 5,
+                          child: Image.memory(
+                            image,
+                            key: Key('portfolio_image_${item.title}'),
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _CoverPlaceholder(item: item),
                           ),
+                        )
+                      : AspectRatio(
+                          aspectRatio: 1,
+                          child: _CoverPlaceholder(item: item),
                         ),
-                        const SizedBox(height: 2),
-                      ],
-                      Text(
-                        item.title,
-                        style: const TextStyle(
+                ),
+                if (item.isContribution)
+                  const Positioned(left: 10, top: 10, child: _GoldTag()),
+                if (onEdit != null || onDelete != null)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Material(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      shape: const CircleBorder(),
+                      child: PopupMenuButton<String>(
+                        key: Key('portfolio_menu_${item.title}'),
+                        tooltip: 'Opsi karya',
+                        iconSize: 20,
+                        icon: const Icon(
+                          Icons.more_horiz_rounded,
                           color: ProjectNexusColors.ink,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.description,
-                        style: const TextStyle(
-                          color: ProjectNexusColors.muted,
-                          fontSize: 13,
-                          height: 1.45,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          if (item.isContribution)
-                            const StatusPill(
-                              label: 'Kontribusi tim',
-                              color: ProjectNexusColors.teal,
+                        onSelected: (action) => action == 'edit'
+                            ? onEdit?.call()
+                            : onDelete?.call(),
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: ListTile(
+                              leading: Icon(Icons.edit_outlined),
+                              title: Text('Edit karya'),
+                              contentPadding: EdgeInsets.zero,
                             ),
-                          SkillTag(item.category),
-                          SkillTag(item.year),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.delete_outline_rounded,
+                                color: ProjectNexusColors.error,
+                              ),
+                              title: Text('Hapus karya'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                if (onEdit != null || onDelete != null)
-                  PopupMenuButton<String>(
-                    key: Key('portfolio_menu_${item.title}'),
-                    tooltip: 'Opsi karya',
-                    icon: const Icon(
-                      Icons.more_vert_rounded,
-                      color: ProjectNexusColors.muted,
                     ),
-                    onSelected: (action) =>
-                        action == 'edit' ? onEdit?.call() : onDelete?.call(),
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                          leading: Icon(Icons.edit_outlined),
-                          title: Text('Edit karya'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.delete_outline_rounded,
-                            color: ProjectNexusColors.error,
-                          ),
-                          title: Text('Hapus karya'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
                   ),
               ],
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showOwner) ...[
+                    Row(
+                      children: [
+                        PersonAvatar(item.owner, radius: 9),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            item.owner,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: ProjectNexusColors.teal,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.muted,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${item.isContribution ? 'Kontribusi' : item.category} · ${item.year}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: item.color,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sampul gradien berwarna kategori untuk karya tanpa foto.
+class _CoverPlaceholder extends StatelessWidget {
+  const _CoverPlaceholder({required this.item});
+
+  final PortfolioItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            item.color.withValues(alpha: 0.95),
+            Color.lerp(item.color, ProjectNexusColors.tealDeep, 0.55)!,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            bottom: -30,
+            child: Icon(
+              item.icon,
+              size: 120,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
           ),
+          Center(child: Icon(item.icon, size: 40, color: Colors.white)),
         ],
+      ),
+    );
+  }
+}
+
+/// Label emas untuk kontribusi dari Workspace. Teks "Kontribusi tim" tetap
+/// sama seperti sebelumnya.
+class _GoldTag extends StatelessWidget {
+  const _GoldTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [ProjectNexusColors.goldLight, ProjectNexusColors.gold],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: const Text(
+        'Kontribusi tim',
+        style: TextStyle(
+          color: ProjectNexusColors.tealDeep,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+/// Detail karya: foto besar yang dapat diperbesar, lalu informasi karya.
+class _PortfolioDetailPage extends StatelessWidget {
+  const _PortfolioDetailPage({
+    required this.item,
+    required this.image,
+    required this.heroTag,
+  });
+
+  final PortfolioItem item;
+  final Uint8List? image;
+  final String heroTag;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = this.image;
+    return Scaffold(
+      backgroundColor: ProjectNexusColors.tealDeep,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        title: const Text(
+          'Detail karya',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: Hero(
+                tag: heroTag,
+                child: image != null
+                    ? InteractiveViewer(
+                        maxScale: 4,
+                        child: Center(
+                          child: Image.memory(
+                            image,
+                            key: Key('portfolio_detail_image_${item.title}'),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      )
+                    : _CoverPlaceholder(item: item),
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 26),
+              decoration: const BoxDecoration(
+                color: ProjectNexusColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      PersonAvatar(item.owner, radius: 16),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.owner,
+                          style: const TextStyle(
+                            color: ProjectNexusColors.teal,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        item.year,
+                        style: const TextStyle(
+                          color: ProjectNexusColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.ink,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    item.description,
+                    style: const TextStyle(
+                      color: ProjectNexusColors.muted,
+                      fontSize: 14,
+                      height: 1.55,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (item.isContribution) const _GoldTag(),
+                      SkillTag(item.category),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
