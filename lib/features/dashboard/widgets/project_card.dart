@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
+import '../models/profile_photo_store.dart';
 
 class ProjectCard extends StatelessWidget {
   const ProjectCard({
@@ -133,6 +134,15 @@ class PersonAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trimmed = name.trim();
+    // Foto profil dipakai bila pengguna sudah mengunggahnya.
+    final photo = ProfilePhotoScope.maybeOf(context)?.photoFor(trimmed);
+    if (photo != null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: ProjectNexusColors.mint,
+        backgroundImage: MemoryImage(photo),
+      );
+    }
     return CircleAvatar(
       radius: radius,
       backgroundColor: ProjectNexusColors.mint,

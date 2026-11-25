@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
+import '../../dashboard/models/profile_photo_store.dart';
 import '../../dashboard/models/project_workflow_store.dart';
 import '../../dashboard/models/team_work_store.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
@@ -45,6 +46,9 @@ class _AuthGateState extends State<AuthGate> {
     database: widget.database,
     notifications: _notificationStore,
   );
+  late final ProfilePhotoStore _photoStore = ProfilePhotoStore(
+    database: widget.database,
+  );
   late final TeamWorkStore _teamStore = TeamWorkStore(
     database: widget.database,
   );
@@ -63,6 +67,7 @@ class _AuthGateState extends State<AuthGate> {
     _splashTimer?.cancel();
     _projectStore.dispose();
     _teamStore.dispose();
+    _photoStore.dispose();
     _notificationStore.dispose();
     super.dispose();
   }
@@ -81,6 +86,7 @@ class _AuthGateState extends State<AuthGate> {
     if (cloud != null) {
       _projectStore.startSync(cloud);
       _teamStore.startSync(cloud);
+      _photoStore.startSync(cloud);
       _notificationStore.startSync(cloud, account.name);
     }
     setState(() => _account = account);
@@ -89,6 +95,7 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _leave() async {
     _projectStore.stopSync();
     _teamStore.stopSync();
+    _photoStore.stopSync();
     _notificationStore.stopSync();
     await _accounts.signOut();
     if (!mounted) return;
@@ -106,15 +113,18 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     final isTeacher = account.role == UserRole.teacher;
-    return DashboardScreen(
-      role: account.role,
-      studentName: isTeacher ? null : account.name,
-      teacherName: isTeacher ? account.name : null,
-      email: account.email,
-      projectStore: _projectStore,
-      teamStore: _teamStore,
-      notificationStore: _notificationStore,
-      onLogout: _leave,
+    return ProfilePhotoScope(
+      store: _photoStore,
+      child: DashboardScreen(
+        role: account.role,
+        studentName: isTeacher ? null : account.name,
+        teacherName: isTeacher ? account.name : null,
+        email: account.email,
+        projectStore: _projectStore,
+        teamStore: _teamStore,
+        notificationStore: _notificationStore,
+        onLogout: _leave,
+      ),
     );
   }
 }

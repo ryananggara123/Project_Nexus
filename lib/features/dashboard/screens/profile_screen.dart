@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/media/photo_picker.dart';
 import '../../../core/theme/project_nexus_colors.dart';
 import '../models/profile_data.dart';
+import '../models/profile_photo_store.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/project_card.dart';
 
@@ -29,17 +31,10 @@ class ProfileScreen extends StatelessWidget {
           title: profile.name,
           subtitle: profile.roleLabel,
           description: profile.institution,
-          leading: CircleAvatar(
-            radius: 34,
-            backgroundColor: Colors.white,
-            child: Text(
-              _initials(profile.name),
-              style: const TextStyle(
-                color: ProjectNexusColors.tealDark,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+          leading: _ProfileAvatar(
+            name: profile.name,
+            initials: _initials(profile.name),
+            onTap: () => _showPhotoOptions(context),
           ),
           trailing: IconButton(
             key: const Key('profile_edit'),
@@ -128,7 +123,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Profil contoh untuk pratinjau. Perubahan tersimpan selama aplikasi berjalan.',
+          'Ketuk foto profil untuk menggantinya. Foto terlihat oleh anggota tim dan guru.',
           textAlign: TextAlign.center,
           style: TextStyle(color: ProjectNexusColors.muted, fontSize: 12),
         ),
@@ -142,6 +137,87 @@ class ProfileScreen extends StatelessWidget {
       builder: (context) => _EditProfileDialog(profile: profile),
     );
     if (editedProfile != null) onProfileChanged(editedProfile);
+  }
+
+  /// Pilihan foto profil: kamera, galeri, atau hapus foto.
+  Future<void> _showPhotoOptions(BuildContext context) async {
+    final store = ProfilePhotoScope.maybeOf(context);
+    if (store == null) return;
+    final hasPhoto = store.photoFor(profile.name) != null;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                'Foto profil',
+                style: TextStyle(
+                  color: ProjectNexusColors.ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ListTile(
+              key: const Key('profile_photo_camera'),
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Ambil dari kamera'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              key: const Key('profile_photo_gallery'),
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih dari galeri'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            if (hasPhoto)
+              ListTile(
+                key: const Key('profile_photo_remove'),
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: ProjectNexusColors.error,
+                ),
+                title: const Text(
+                  'Hapus foto',
+                  style: TextStyle(color: ProjectNexusColors.error),
+                ),
+                onTap: () => Navigator.pop(context, 'remove'),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    void show(String text) => messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+
+    if (choice == 'remove') {
+      store.removePhoto(profile.name);
+      show('Foto profil dihapus.');
+      return;
+    }
+    try {
+      final photo = await PhotoPicker.instance.pick(
+        choice == 'camera' ? PhotoSource.camera : PhotoSource.gallery,
+      );
+      if (photo == null) return;
+      if (photo.length > PhotoPicker.maxBytes) {
+        show('Ukuran foto maksimal 700 KB.');
+        return;
+      }
+      store.setPhoto(profile.name, photo);
+      show('Foto profil diperbarui.');
+    } on Exception {
+      // Misalnya izin kamera ditolak atau perangkat tidak memiliki kamera.
+      show('Foto tidak dapat diambil. Coba pilih dari galeri.');
+    }
   }
 
   String _initials(String name) {
@@ -429,5 +505,69 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       return 'Bagian ini wajib diisi.';
     }
     return null;
+  }
+}
+
+/// Avatar besar di kartu profil: foto bila ada, inisial bila belum, dengan
+/// lencana kamera sebagai tanda bahwa foto dapat diganti.
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.name,
+    required this.initials,
+    required this.onTap,
+  });
+
+  final String name;
+  final String initials;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = ProfilePhotoScope.maybeOf(context)?.photoFor(name);
+    return Semantics(
+      button: true,
+      label: 'Ganti foto profil',
+      child: GestureDetector(
+        key: const Key('profile_avatar'),
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              radius: 34,
+              backgroundColor: Colors.white,
+              backgroundImage: photo == null ? null : MemoryImage(photo),
+              child: photo != null
+                  ? null
+                  : Text(
+                      initials,
+                      style: const TextStyle(
+                        color: ProjectNexusColors.tealDark,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+            ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: ProjectNexusColors.teal,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Icon(
+                  Icons.photo_camera_rounded,
+                  size: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
