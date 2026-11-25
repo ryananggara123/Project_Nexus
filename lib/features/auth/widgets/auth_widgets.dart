@@ -4,10 +4,18 @@ import '../../../core/theme/project_nexus_colors.dart';
 
 /// Logo ProjectNexus: ikon dalam kotak teal + nama aplikasi.
 class BrandMark extends StatelessWidget {
-  const BrandMark({this.size = 40, this.showName = true, super.key});
+  const BrandMark({
+    this.size = 40,
+    this.showName = true,
+    this.onDark = false,
+    super.key,
+  });
 
   final double size;
   final bool showName;
+
+  /// Nama berwarna putih untuk latar gelap.
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +39,14 @@ class BrandMark extends StatelessWidget {
       children: [
         logo,
         const SizedBox(width: 10),
-        const Flexible(
+        Flexible(
           child: Text(
             'ProjectNexus',
             maxLines: 1,
             overflow: TextOverflow.fade,
             softWrap: false,
             style: TextStyle(
-              color: ProjectNexusColors.ink,
+              color: onDark ? Colors.white : ProjectNexusColors.ink,
               fontSize: 17,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.2,
@@ -50,12 +58,105 @@ class BrandMark extends StatelessWidget {
   }
 }
 
+/// Latar halaman login dan registrasi: panel gradien teal berornamen di
+/// bagian atas, konten di atasnya.
+class AuthBackdrop extends StatelessWidget {
+  const AuthBackdrop({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          height: 330,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  ProjectNexusColors.tealDeep,
+                  ProjectNexusColors.tealDark,
+                  Color(0xFF176B68),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: const Stack(
+              children: [
+                Positioned(right: -70, top: -60, child: _Ring(size: 230)),
+                Positioned(left: -60, bottom: -90, child: _Ring(size: 200)),
+              ],
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _Ring extends StatelessWidget {
+  const _Ring({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.07),
+          width: 26,
+        ),
+      ),
+    );
+  }
+}
+
+/// Kartu putih tempat form login dan registrasi.
+class AuthCard extends StatelessWidget {
+  const AuthCard({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+      decoration: BoxDecoration(
+        color: ProjectNexusColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppShadows.raised,
+      ),
+      child: child,
+    );
+  }
+}
+
 /// Judul + subjudul halaman auth, rata kiri.
 class AuthHeading extends StatelessWidget {
-  const AuthHeading({required this.title, required this.subtitle, super.key});
+  const AuthHeading({
+    required this.title,
+    required this.subtitle,
+    this.onDark = false,
+    super.key,
+  });
 
   final String title;
   final String subtitle;
+
+  /// Teks putih untuk latar gelap.
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
@@ -64,10 +165,10 @@ class AuthHeading extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: ProjectNexusColors.ink,
+          style: TextStyle(
+            color: onDark ? Colors.white : ProjectNexusColors.ink,
             fontSize: 26,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
             height: 1.2,
           ),
@@ -75,8 +176,8 @@ class AuthHeading extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: const TextStyle(
-            color: ProjectNexusColors.muted,
+          style: TextStyle(
+            color: onDark ? const Color(0xFFC9DEDA) : ProjectNexusColors.muted,
             fontSize: 14,
             height: 1.45,
           ),

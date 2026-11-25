@@ -43,37 +43,50 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ProjectNexusColors.surface,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BrandMark(size: 72, showName: false),
-                SizedBox(height: 20),
-                Text(
-                  'ProjectNexus',
-                  style: TextStyle(
-                    color: ProjectNexusColors.ink,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.4,
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              ProjectNexusColors.tealDeep,
+              ProjectNexusColors.tealDark,
+              Color(0xFF176B68),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BrandMark(size: 72, showName: false),
+                  SizedBox(height: 20),
+                  Text(
+                    'ProjectNexus',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                    ),
                   ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'SATU TIM, BANYAK IDE',
-                  style: TextStyle(
-                    color: ProjectNexusColors.muted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.6,
+                  SizedBox(height: 6),
+                  Text(
+                    'SATU TIM, BANYAK IDE',
+                    style: TextStyle(
+                      color: ProjectNexusColors.goldLight,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.6,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
