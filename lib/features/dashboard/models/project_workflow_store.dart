@@ -319,6 +319,51 @@ class ProjectWorkflowStore extends ChangeNotifier with CloudSync {
     return WorkflowActionResult.success;
   }
 
+  /// Ketua mencatat hasil lomba proyek yang sudah disetujui. Seluruh
+  /// anggota dan guru pendamping diberi tahu.
+  WorkflowActionResult recordResult({
+    required String projectId,
+    required String leaderName,
+    required UserRole role,
+    required CompetitionResult result,
+    String? note,
+  }) {
+    if (role != UserRole.student) return WorkflowActionResult.notAuthorized;
+    final index = _projectIndex(projectId);
+    if (index == -1) return WorkflowActionResult.projectNotFound;
+    final project = _projects[index];
+    if (project.leader.toLowerCase() != leaderName.trim().toLowerCase()) {
+      return WorkflowActionResult.notProjectLeader;
+    }
+    if (project.statusAcc != 'approved') {
+      return WorkflowActionResult.projectNotApproved;
+    }
+    final trimmedNote = note?.trim() ?? '';
+    final updated = _projects[index] = project.copyWith(
+      result: result,
+      resultNote: trimmedNote,
+      resultAt: DateTime.now(),
+    );
+    _commit(project: updated);
+    final message = result.isWinner || result == CompetitionResult.honorable
+        ? 'Selamat! Tim “${updated.title}” meraih ${result.label}.'
+        : 'Tim “${updated.title}” tercatat sebagai ${result.label}. Terima kasih sudah berjuang!';
+    for (final recipient in {
+      ...acceptedMembers(projectId),
+      updated.teacherName,
+    }) {
+      notifications?.send(
+        recipient: recipient,
+        sender: leaderName,
+        type: NotificationType.resultRecorded,
+        title: 'Hasil lomba dicatat',
+        body: message,
+        projectId: projectId,
+      );
+    }
+    return WorkflowActionResult.success;
+  }
+
   WorkflowActionResult review(
     ProjectListing project, {
     required String status,

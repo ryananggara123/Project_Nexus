@@ -9,7 +9,8 @@ enum NotificationType {
   newApplicant(Icons.person_add_alt_1_rounded, ProjectNexusColors.teal),
   applicationAccepted(Icons.celebration_rounded, ProjectNexusColors.success),
   applicationRejected(Icons.person_off_outlined, ProjectNexusColors.muted),
-  taskAssigned(Icons.assignment_ind_rounded, ProjectNexusColors.teal);
+  taskAssigned(Icons.assignment_ind_rounded, ProjectNexusColors.teal),
+  resultRecorded(Icons.emoji_events_rounded, ProjectNexusColors.gold);
 
   const NotificationType(this.icon, this.color);
 
