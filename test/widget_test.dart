@@ -250,19 +250,20 @@ void main() {
     );
     await tester.drag(
       find.byType(CustomScrollView).first,
-      const Offset(0, 1000),
+      const Offset(0, 4000),
     );
     await tester.pumpAndSettle();
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, -250),
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Ramah pemula'));
+    await _reveal(tester, find.widgetWithText(FilterChip, 'Ramah pemula'));
     await tester.tap(find.widgetWithText(FilterChip, 'Ramah pemula'));
     await tester.pumpAndSettle();
 
     expect(find.text('Aplikasi Pemantau Kualitas Air IoT'), findsNothing);
+    await _scrollToTop(tester);
+    await tester.scrollUntilVisible(
+      find.text('2 proyek'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('2 proyek'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Sistem Informasi Perpustakaan'),
@@ -279,15 +280,10 @@ void main() {
 
     await tester.drag(
       find.byType(CustomScrollView).first,
-      const Offset(0, 1000),
+      const Offset(0, 4000),
     );
     await tester.pumpAndSettle();
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, -300),
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Ramah pemula'));
+    await _reveal(tester, find.widgetWithText(FilterChip, 'Ramah pemula'));
     await tester.tap(find.widgetWithText(FilterChip, 'Ramah pemula'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -303,7 +299,11 @@ void main() {
   ) async {
     await _loginAs(tester);
 
-    await tester.ensureVisible(find.text('Katalog prestasi'));
+    await tester.scrollUntilVisible(
+      find.text('Katalog prestasi'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Katalog prestasi'));
     await tester.pumpAndSettle();
@@ -742,8 +742,7 @@ void main() {
     expect(find.text('Proyek disetujui dan sudah masuk feed.'), findsOneWidget);
 
     await _switchAccount(tester);
-    await tester.tap(find.text('Pengajuan saya'));
-    await tester.pumpAndSettle();
+    await _openSubmissionsTab(tester);
     expect(find.text('Disetujui'), findsOneWidget);
     final manageApplicants = find.text('Kelola pelamar (rekrutmen terbuka)');
     await tester.drag(
@@ -762,8 +761,19 @@ void main() {
     await tester.tap(find.text('Tutup').last);
     await tester.pumpAndSettle();
 
+    await _scrollToTop(tester);
+    await tester.scrollUntilVisible(
+      find.text('Feed proyek'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Feed proyek'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Aplikasi Bank Sampah Pintar'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Aplikasi Bank Sampah Pintar'), findsOneWidget);
   });
 
@@ -818,8 +828,7 @@ void main() {
     );
 
     await _switchAccount(tester);
-    await tester.tap(find.text('Pengajuan saya'));
-    await tester.pumpAndSettle();
+    await _openSubmissionsTab(tester);
     expect(find.text('Perlu diperbaiki'), findsOneWidget);
     expect(
       find.text(
@@ -884,8 +893,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _switchAccount(tester);
-    await tester.tap(find.text('Pengajuan saya'));
-    await tester.pumpAndSettle();
+    await _openSubmissionsTab(tester);
     expect(find.text('Disetujui'), findsOneWidget);
   });
 
@@ -932,9 +940,7 @@ void main() {
     expect(find.text('Proyek disetujui dan sudah masuk feed.'), findsOneWidget);
 
     await _switchAccount(tester);
-    await tester.ensureVisible(find.text('Pengajuan saya'));
-    await tester.tap(find.text('Pengajuan saya'));
-    await tester.pumpAndSettle();
+    await _openSubmissionsTab(tester);
     final manageApplicants = find.text('Kelola pelamar (rekrutmen terbuka)');
     await tester.drag(
       find.byType(CustomScrollView).first,
@@ -1049,9 +1055,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _switchAccount(tester);
-    await tester.ensureVisible(find.text('Pengajuan saya'));
-    await tester.tap(find.text('Pengajuan saya'));
-    await tester.pumpAndSettle();
+    await _openSubmissionsTab(tester);
     final projectApplications = find.text('Kelola pelamar (rekrutmen terbuka)');
     await tester.drag(
       find.byType(CustomScrollView).first,
@@ -1224,5 +1228,37 @@ Future<void> _submitProject(
   await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('Kirim untuk ditinjau'));
   await tester.tap(find.text('Kirim untuk ditinjau'));
+  await tester.pumpAndSettle();
+}
+
+/// Menggulir Beranda sampai tab "Pengajuan saya" berada di atas layar lalu
+/// membukanya, agar isi tab langsung terlihat.
+Future<void> _openSubmissionsTab(WidgetTester tester) async {
+  final tab = find.text('Pengajuan saya');
+  await tester.scrollUntilVisible(
+    tab,
+    150,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await Scrollable.ensureVisible(tester.element(tab), alignment: 0.1);
+  await tester.pumpAndSettle();
+  await tester.tap(tab);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollToTop(WidgetTester tester) async {
+  await tester.drag(find.byType(CustomScrollView).first, const Offset(0, 4000));
+  await tester.pumpAndSettle();
+}
+
+/// Menggulir sampai [target] terlihat lalu menaruhnya di bagian atas layar,
+/// agar tidak tertutup tombol "Ajukan proyek".
+Future<void> _reveal(WidgetTester tester, Finder target) async {
+  await tester.scrollUntilVisible(
+    target,
+    150,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await Scrollable.ensureVisible(tester.element(target), alignment: 0.2);
   await tester.pumpAndSettle();
 }
