@@ -28,7 +28,14 @@ Siswa yang ingin ikut lomba atau membuat proyek sering kesulitan menemukan rekan
 | Workspace tim | Papan tugas To-Do, In Progress, dan Done yang hanya dapat dibuka anggota tim dan guru pendamping. Tugas dapat ditambah, dipindah, diedit, dan dihapus. |
 | Portofolio & lencana | Tugas yang selesai tercatat otomatis sebagai kontribusi dan diberi lencana apresiasi. |
 | Foto karya | Karya portofolio dapat diberi foto dari kamera atau galeri (pemilih berkas di browser). Foto diperkecil, dibatasi 700 KB, lalu disimpan di database lokal dan di Firestore sehingga tampil di semua perangkat. Karya milik sendiri dapat diedit (termasuk mengganti atau menghapus foto) dan dihapus. |
-| Katalog prestasi & profil | Etalase prestasi sekolah serta profil yang dapat diedit (keahlian, minat, waktu luang). |
+| Katalog prestasi & profil | Etalase prestasi sekolah serta profil yang dapat diedit (bio, keahlian, minat, waktu luang), dengan statistik dan lencana. |
+| Foto profil | Foto dari kamera atau galeri, tersimpan di Firestore dan tampil di semua avatar (anggota tim, pelamar, kartu proyek). |
+| Keahlian umum | Keahlian dipilih dari tujuh kelompok (Umum, Seni & Budaya, Olahraga, Sains, Bahasa & Debat, Teknologi, Wirausaha) atau diketik sendiri, sehingga aplikasi dapat dipakai untuk lomba apa pun, bukan hanya lomba IT. |
+| Papan Info Lomba | Menu **Lomba**: guru memasang info lomba (bidang, tingkat, tenggat, hadiah, tautan) dengan hitung mundur berwarna. Siswa dapat langsung membuat tim dari halaman detail lomba. |
+| Hasil lomba, Hall of Fame, sertifikat | Ketua mencatat hasil lomba (Juara 1–3, Harapan, Finalis, Peserta); seluruh anggota dan guru mendapat notifikasi. Hasil tampil di Hall of Fame, dan setiap anggota dapat mengunduh sertifikat PDF. |
+| Direktori Bakat | Siswa mencari rekan berdasarkan nama, keahlian, atau minat. Siswa dengan keahlian yang dibutuhkan proyek ditaruh paling atas, dan ketua dapat mengirim ajakan bergabung sebagai notifikasi. Siswa dapat menutup diri dari ajakan di Profil. |
+| Misi Pemula & level | Sepuluh misi (melengkapi profil, melamar, bergabung tim, menyelesaikan tugas, ikut lomba, dan seterusnya) memberi XP dan menaikkan level dari *Pendatang Baru* sampai *Legenda Sekolah*. Setiap misi punya tombol "Mulai" yang membuka halaman terkait. |
+| Diskusi tim | Ruang obrolan per proyek di Workspace untuk ketua, anggota, dan guru pendamping, tersinkron realtime. |
 | Sinkronisasi realtime | Proyek, lamaran, tugas Workspace, dan notifikasi disimpan di Cloud Firestore dan langsung muncul di perangkat lain tanpa memuat ulang. Database lokal (Hive) tetap menyimpan salinan sebagai cache offline. |
 | Pusat notifikasi | Lonceng dengan lencana jumlah belum dibaca. Guru diberi tahu saat ada draf atau revisi baru; siswa saat proyeknya disetujui atau ditolak, ada pelamar baru, lamarannya diputuskan, atau mendapat tugas baru. Notifikasi yang tiba saat aplikasi terbuka muncul sebagai pesan singkat; di Android, notifikasi yang tiba saat aplikasi di latar belakang muncul di bilah notifikasi HP. |
 | Aturan keamanan | `firestore.rules` membatasi akses sesuai peran: hanya pengguna yang masuk yang dapat membaca data, siswa tidak dapat menyetujui proyek atau mengubah perannya, dan notifikasi hanya dapat dibaca penerimanya. |
@@ -94,8 +101,12 @@ lib/
     │   ├── models/               # model, aturan alur proyek, rekomendasi
     │   ├── screens/
     │   └── widgets/
+    ├── competitions/             # Info Lomba, Hall of Fame, sertifikat PDF
+    ├── discussion/               # diskusi tim per proyek
+    ├── missions/                 # Misi Pemula, XP, dan level
+    ├── talent/                   # Direktori Bakat dan ajakan bergabung
     └── notifications/            # model, penyimpanan, dan pusat notifikasi
-test/                             # 46 unit test dan 30 widget test
+test/                             # 100 pengujian unit dan widget
 firestore.rules                   # aturan keamanan Cloud Firestore
 docs/screenshots/                 # tangkapan layar untuk README
 ```
@@ -135,7 +146,7 @@ Untuk melihat sinkronisasi realtime, buka aplikasi di dua jendela browser (misal
 
 ```bash
 flutter analyze   # analisis statis: No issues found
-flutter test      # 76 pengujian: All tests passed
+flutter test      # 100 pengujian: All tests passed
 ```
 
 ## Batasan prototipe
@@ -145,6 +156,9 @@ flutter test      # 76 pengujian: All tests passed
 - Karya contoh milik siswa fiktif tidak tersinkron ke server karena aturan keamanan hanya mengizinkan pemilik karya mengunggahnya.
 - Papan tugas satu proyek disimpan sebagai satu dokumen. Bila dua anggota mengubahnya pada saat yang sama, perubahan terakhir yang dipakai.
 - Pengguna dikenali lewat nama lengkap di data proyek, sehingga nama siswa sebaiknya unik.
+- Pada mode cloud, Direktori Bakat hanya berisi siswa yang sudah membuka aplikasi versi terbaru; siswa contoh hanya tampil pada mode lokal.
+- Pesan diskusi tim hanya dapat dikirim anggota tim, tetapi dapat dibaca semua pengguna yang masuk (sama seperti papan tugas Workspace). Pesan baru belum memunculkan notifikasi.
+- Ajakan bergabung yang sudah dikirim dicatat di perangkat pengirim, sehingga dari perangkat lain ajakan yang sama dapat terkirim lagi.
 - Prototipe ini belum ditujukan untuk menyimpan data siswa yang sensitif.
 
 ## Progres pasca-UTS
@@ -154,10 +168,11 @@ flutter test      # 76 pengujian: All tests passed
 | 1 | Database lokal (Hive CE) untuk proyek, lamaran, tugas Workspace, portofolio, dan akun siswa, beserta hash kata sandi dan pengujian persistensi | Selesai |
 | 2 | Unggah foto karya portofolio dari kamera atau galeri, disimpan di database lokal | Selesai |
 | 3–4 | Firebase Authentication dan sinkronisasi realtime Cloud Firestore dengan aturan keamanan, pusat notifikasi, edit dan hapus karya portofolio dan tugas Workspace, sinkronisasi karya beserta fotonya, dan notifikasi sistem Android | Selesai |
+| 5–6 | Uji di HP Android, foto profil, desain ulang tampilan, keahlian non-IT, Papan Info Lomba, hasil lomba dan Hall of Fame, sertifikat PDF, Direktori Bakat, Misi Pemula dan level, serta diskusi tim | Selesai |
 
 ## Rencana menuju UAS
 
-1. Pengujian pada HP Android fisik, termasuk kamera, notifikasi sistem, dan sinkronisasi antara HP dan browser.
+1. Uji ulang di HP Android untuk fitur Minggu 5–6.
 2. Pengujian penerimaan bersama pengguna (siswa dan guru) serta perbaikan berdasarkan masukan.
 3. Penyempurnaan tampilan dan aksesibilitas.
 4. Persiapan presentasi dan dokumentasi akhir UAS.
