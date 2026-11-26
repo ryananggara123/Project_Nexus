@@ -6,6 +6,8 @@ import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
 import '../../competitions/models/competition_store.dart';
 import '../../dashboard/models/profile_photo_store.dart';
+import '../../discussion/models/team_chat_store.dart';
+import '../../talent/models/talent_store.dart';
 import '../../dashboard/models/project_workflow_store.dart';
 import '../../dashboard/models/team_work_store.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
@@ -56,6 +58,10 @@ class _AuthGateState extends State<AuthGate> {
   late final TeamWorkStore _teamStore = TeamWorkStore(
     database: widget.database,
   );
+  late final TalentStore _talentStore = TalentStore(database: widget.database);
+  late final TeamChatStore _chatStore = TeamChatStore(
+    database: widget.database,
+  );
 
   @override
   void initState() {
@@ -73,6 +79,8 @@ class _AuthGateState extends State<AuthGate> {
     _teamStore.dispose();
     _photoStore.dispose();
     _competitionStore.dispose();
+    _talentStore.dispose();
+    _chatStore.dispose();
     _notificationStore.dispose();
     super.dispose();
   }
@@ -93,6 +101,8 @@ class _AuthGateState extends State<AuthGate> {
       _teamStore.startSync(cloud);
       _photoStore.startSync(cloud);
       _competitionStore.startSync(cloud);
+      _talentStore.startSync(cloud);
+      _chatStore.startSync(cloud);
       _notificationStore.startSync(cloud, account.name);
     }
     setState(() => _account = account);
@@ -103,6 +113,8 @@ class _AuthGateState extends State<AuthGate> {
     _teamStore.stopSync();
     _photoStore.stopSync();
     _competitionStore.stopSync();
+    _talentStore.stopSync();
+    _chatStore.stopSync();
     _notificationStore.stopSync();
     await _accounts.signOut();
     if (!mounted) return;
@@ -131,6 +143,8 @@ class _AuthGateState extends State<AuthGate> {
         teamStore: _teamStore,
         notificationStore: _notificationStore,
         competitionStore: _competitionStore,
+        talentStore: _talentStore,
+        chatStore: _chatStore,
         onLogout: _leave,
       ),
     );

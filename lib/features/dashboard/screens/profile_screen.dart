@@ -26,8 +26,18 @@ class ProfileScreen extends StatelessWidget {
     required this.onProfileChanged,
     this.stats = const [],
     this.badges = const [],
+    this.highlight,
+    this.openToInvite,
+    this.onOpenToInviteChanged,
     super.key,
   });
+
+  /// Kartu tambahan di bawah statistik, misalnya level dan misi.
+  final Widget? highlight;
+
+  /// Status di Direktori Bakat; `null` menyembunyikan pengaturannya.
+  final bool? openToInvite;
+  final ValueChanged<bool>? onOpenToInviteChanged;
 
   final Widget header;
   final ProfileData profile;
@@ -54,6 +64,10 @@ class ProfileScreen extends StatelessWidget {
         if (stats.isNotEmpty) ...[
           const SizedBox(height: 16),
           _ProfileStats(stats),
+        ],
+        if (highlight case final highlight?) ...[
+          const SizedBox(height: 16),
+          highlight,
         ],
         const SizedBox(height: 16),
         if (badges.isNotEmpty)
@@ -119,6 +133,21 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        if (openToInvite case final open?)
+          _ProfileSection(
+            title: 'Direktori Bakat',
+            icon: Icons.diversity_3_rounded,
+            child: SwitchListTile(
+              key: const Key('profile_open_to_invite'),
+              contentPadding: EdgeInsets.zero,
+              value: open,
+              onChanged: onOpenToInviteChanged,
+              title: const Text('Terbuka untuk diajak bergabung'),
+              subtitle: const Text(
+                'Siswa lain dapat melihat keahlianmu dan mengajakmu ke tim.',
+              ),
             ),
           ),
         _ProfileSection(

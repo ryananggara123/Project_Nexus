@@ -8,6 +8,10 @@ import '../../auth/widgets/auth_widgets.dart';
 import '../../competitions/models/competition.dart';
 import '../../competitions/models/competition_store.dart';
 import '../../competitions/screens/competitions_screen.dart';
+import '../../discussion/models/team_chat_store.dart';
+import '../../discussion/screens/team_discussion_screen.dart';
+import '../../missions/mission_card.dart';
+import '../../missions/missions.dart';
 import '../../notifications/data/system_notifier.dart';
 import '../../notifications/models/app_notification.dart';
 import '../../notifications/models/notification_store.dart';
@@ -21,6 +25,7 @@ import '../models/project_recommender.dart';
 import '../models/project_workflow_store.dart';
 import '../models/team_work_store.dart';
 import '../models/profile_data.dart';
+import '../models/profile_photo_store.dart';
 import '../models/workspace_task.dart';
 import '../widgets/achievement_card.dart';
 import '../widgets/approval_request_card.dart';
@@ -33,6 +38,9 @@ import '../widgets/skill_filter_list.dart';
 import 'portfolio_screen.dart';
 import 'profile_screen.dart';
 import 'workspace_screen.dart';
+import '../../talent/models/talent_profile.dart';
+import '../../talent/models/talent_store.dart';
+import '../../talent/screens/talent_directory_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -42,6 +50,8 @@ class DashboardScreen extends StatefulWidget {
     this.teamStore,
     this.notificationStore,
     this.competitionStore,
+    this.talentStore,
+    this.chatStore,
     this.studentName,
     this.teacherName,
     this.email,
@@ -61,6 +71,12 @@ class DashboardScreen extends StatefulWidget {
 
   /// Papan Info Lomba. Bila kosong, layar membuat penyimpanan sendiri.
   final CompetitionStore? competitionStore;
+
+  /// Direktori Bakat. Bila kosong, layar membuat penyimpanan sendiri.
+  final TalentStore? talentStore;
+
+  /// Ruang diskusi tim. Bila kosong, layar membuat penyimpanan sendiri.
+  final TeamChatStore? chatStore;
   final String? studentName;
   final String? teacherName;
 
@@ -92,6 +108,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   CompetitionStore? _ownedCompetitionStore;
   late final CompetitionStore _competitions =
       widget.competitionStore ?? (_ownedCompetitionStore = CompetitionStore());
+  TalentStore? _ownedTalentStore;
+  late final TalentStore _talents =
+      widget.talentStore ?? (_ownedTalentStore = TalentStore());
+  TeamChatStore? _ownedChatStore;
+  late final TeamChatStore _chat =
+      widget.chatStore ?? (_ownedChatStore = TeamChatStore());
   late ProfileData _profile = _isTeacherView
       ? ProfileData(
           name: _currentTeacherName,
@@ -144,6 +166,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     widget.projectStore.addListener(_onStoreChanged);
     _teamStore.addListener(_onStoreChanged);
+    _talents.addListener(_onStoreChanged);
+    _chat.addListener(_onStoreChanged);
     _incomingNotifications = _notifications.incoming.listen(_announce);
     if (!_isTeacherView) _restoreRecommendationPreferences();
   }
@@ -161,7 +185,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     widget.projectStore.removeListener(_onStoreChanged);
     _teamStore.removeListener(_onStoreChanged);
+    _talents.removeListener(_onStoreChanged);
+    _chat.removeListener(_onStoreChanged);
     _ownedTeamStore?.dispose();
+    _ownedTalentStore?.dispose();
+    _ownedChatStore?.dispose();
     unawaited(_incomingNotifications?.cancel());
     _ownedNotificationStore?.dispose();
     _ownedCompetitionStore?.dispose();
@@ -442,7 +470,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     final tasks = _teamStore.tasksFor(project.id);
+    _chat.watch(project.id);
+    final lastMessage = _chat.lastMessage(project.id);
     return WorkspaceScreen(
+      onOpenDiscussion: () => _openDiscussion(project),
+      discussionPreview: lastMessage == null
+          ? null
+          : '${lastMessage.sender.split(' ').first}: ${lastMessage.text}',
       header: _appHeader,
       availableProjects: _workspaceProjects,
       selectedProjectId: project.id,
@@ -604,6 +638,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       header: _appHeader,
       profile: _profile,
       onProfileChanged: _onProfileChanged,
+      highlight: MissionCard(
+        progress: _missionProgress,
+        onStart: _startMission,
+      ),
+      openToInvite: _openToInvite,
+      onOpenToInviteChanged: (open) => _publishTalent(openToInvite: open),
       stats: [
         (label: 'Tim proyek', value: teams, icon: Icons.groups_2_outlined),
         (label: 'Tugas selesai', value: myDone, icon: Icons.task_alt_rounded),
@@ -653,18 +693,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _restoreRecommendationPreferences() async {
     final accountId = _preferenceAccountId;
     final preferences = await _preferencesStore.load(accountId);
-    if (!mounted ||
-        preferences == null ||
-        _profileEditedBeforePreferencesLoad) {
-      return;
+    if (!mounted) return;
+    if (preferences != null && !_profileEditedBeforePreferencesLoad) {
+      setState(() {
+        _profile = _profile.copyWith(
+          bio: preferences.bio,
+          skills: preferences.skills,
+          interests: preferences.interests,
+          weeklyAvailableHours: preferences.weeklyAvailableHours,
+        );
+      });
     }
-    setState(() {
-      _profile = _profile.copyWith(
-        skills: preferences.skills,
-        interests: preferences.interests,
-        weeklyAvailableHours: preferences.weeklyAvailableHours,
-      );
-    });
+    _publishTalent();
+  }
+
+  bool get _openToInvite =>
+      _talents.byName(_profile.name)?.openToInvite ?? true;
+
+  /// Menampilkan profil siswa di Direktori Bakat agar dapat diajak ke tim.
+  void _publishTalent({bool? openToInvite}) {
+    if (_isTeacherView) return;
+    _talents.publish(
+      TalentProfile(
+        name: _profile.name,
+        bio: _profile.bio,
+        skills: _profile.skills,
+        interests: _profile.interests,
+        weeklyHours: _profile.weeklyAvailableHours,
+        openToInvite: openToInvite ?? _openToInvite,
+      ),
+    );
   }
 
   void _onProfileChanged(ProfileData profile) {
@@ -674,6 +732,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
     if (!_isTeacherView) {
       unawaited(_saveRecommendationPreferences(profile));
+      _publishTalent();
     }
   }
 
@@ -721,6 +780,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 16),
         _buildStudentOverview(),
+        const SizedBox(height: 16),
+        MissionCard(progress: _missionProgress, onStart: _startMission),
+        const SizedBox(height: 12),
+        _TalentShortcut(onTap: () => _openTalentDirectory()),
         const SizedBox(height: 20),
         DashboardTabBar(
           selectedIndex: _dashboardTab,
@@ -841,6 +904,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               : null,
           onRecordResult: project.statusAcc == 'approved'
               ? () => _recordResult(project)
+              : null,
+          onFindMembers:
+              project.statusAcc == 'approved' && project.recruitmentOpen
+              ? () => _openTalentDirectory(project.id)
               : null,
         ),
       ),
@@ -1215,6 +1282,122 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Fakta aktivitas siswa untuk menilai Misi Pemula.
+  MissionProgress get _missionProgress {
+    final name = _profile.name.trim().toLowerCase();
+    bool isMe(String other) => other.trim().toLowerCase() == name;
+    final store = widget.projectStore;
+    final myTeams = [
+      for (final project in _projects)
+        if (project.statusAcc == 'approved' &&
+            store.isMember(project.id, _profile.name))
+          project,
+    ];
+    return missionsFor(
+      MissionFacts(
+        profileComplete:
+            _profile.bio.trim().length >= 20 && _profile.skills.length >= 3,
+        hasPhoto:
+            ProfilePhotoScope.maybeOf(context)?.photoFor(_profile.name) != null,
+        applied: store.applications.any((a) => isMe(a.applicantName)),
+        submitted: _projects.any((p) => isMe(p.leader)),
+        joinedTeam: myTeams.isNotEmpty,
+        invitedSomeone: _talents.invitesSent > 0,
+        finishedTask: _teamStore.taskEntries.any(
+          (entry) => entry.value.any(
+            (task) =>
+                task.status == WorkspaceTaskStatus.done && isMe(task.assignee),
+          ),
+        ),
+        addedWork: _teamStore.portfolioItems.any((i) => isMe(i.owner)),
+        recordedResult: myTeams.any((p) => p.result != null),
+        won: myTeams.any((p) => p.result?.isWinner ?? false),
+      ),
+    );
+  }
+
+  void _startMission(MissionTarget target) {
+    switch (target) {
+      case MissionTarget.profile:
+        setState(() => _navigationIndex = 4);
+      case MissionTarget.feed:
+        setState(() {
+          _navigationIndex = 0;
+          _dashboardTab = 0;
+        });
+      case MissionTarget.submissions:
+        setState(() {
+          _navigationIndex = 0;
+          _dashboardTab = 1;
+        });
+      case MissionTarget.draft:
+        unawaited(_openDraftForm());
+      case MissionTarget.directory:
+        unawaited(_openTalentDirectory());
+      case MissionTarget.workspace:
+        setState(() => _navigationIndex = 2);
+      case MissionTarget.portfolio:
+        setState(() => _navigationIndex = 3);
+    }
+  }
+
+  /// Proyek milik siswa yang dapat menerima anggota baru.
+  List<ProjectListing> get _recruitingProjects => [
+    for (final project in _projects)
+      if (project.leader.toLowerCase() == _profile.name.toLowerCase() &&
+          project.statusAcc == 'approved' &&
+          project.recruitmentOpen)
+        project,
+  ];
+
+  Future<void> _openTalentDirectory([String? projectId]) {
+    return Navigator.of(context).push(
+      pageRouteWithPhotos<void>(
+        context,
+        (context) => TalentDirectoryScreen(
+          store: _talents,
+          me: _profile.name,
+          myProjects: _recruitingProjects,
+          initialProjectId: projectId,
+          isOnTeam: (projectId, name) =>
+              widget.projectStore.applicationFor(projectId, name) != null ||
+              widget.projectStore.isMember(projectId, name),
+          onInvite: _invite,
+        ),
+      ),
+    );
+  }
+
+  /// Mengirim ajakan bergabung sebagai notifikasi ke siswa yang dipilih.
+  void _invite(ProjectListing project, TalentProfile talent) {
+    _notifications.send(
+      recipient: talent.name,
+      sender: _profile.name,
+      type: NotificationType.teamInvite,
+      title: 'Ajakan bergabung ke tim',
+      body:
+          '${_profile.name} mengajakmu bergabung ke “${project.title}” '
+          '(${project.event}). Cari proyeknya di Beranda lalu kirim lamaran.',
+      projectId: project.id,
+    );
+    _talents.markInvited(project.id, talent.name);
+  }
+
+  Future<void> _openDiscussion(ProjectListing project) {
+    return Navigator.of(context).push(
+      pageRouteWithPhotos<void>(
+        context,
+        (context) => TeamDiscussionScreen(
+          store: _chat,
+          projectId: project.id,
+          projectTitle: project.title,
+          me: _notificationRecipient,
+          members: _workspaceMembers(project),
+        ),
+      ),
+    );
+  }
+
   void _logout() {
     // Pesan dari akun ini tidak boleh terbawa ke akun berikutnya.
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -1322,12 +1505,14 @@ class _StudentSubmissionCard extends StatelessWidget {
     this.onRevise,
     this.onManageApplicants,
     this.onRecordResult,
+    this.onFindMembers,
   });
 
   final ProjectListing project;
   final VoidCallback? onRevise;
   final VoidCallback? onManageApplicants;
   final VoidCallback? onRecordResult;
+  final VoidCallback? onFindMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -1426,6 +1611,18 @@ class _StudentSubmissionCard extends StatelessWidget {
                   child: Text(
                     'Kelola pelamar (${project.recruitmentOpen ? 'rekrutmen terbuka' : 'rekrutmen ditutup'})',
                   ),
+                ),
+              ),
+            ],
+            if (onFindMembers != null) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  key: Key('find_members_${project.id}'),
+                  onPressed: onFindMembers,
+                  icon: const Icon(Icons.person_search_rounded),
+                  label: const Text('Cari anggota di Direktori Bakat'),
                 ),
               ),
             ],
@@ -1796,6 +1993,65 @@ class _RecordResultDialogState extends State<_RecordResultDialog> {
           child: const Text('Simpan hasil'),
         ),
       ],
+    );
+  }
+}
+
+/// Pintasan dari Beranda ke Direktori Bakat.
+class _TalentShortcut extends StatelessWidget {
+  const _TalentShortcut({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ProjectNexusColors.mint,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: InkWell(
+        key: const Key('open_talent_directory'),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: onTap,
+        child: const Padding(
+          padding: EdgeInsets.all(AppSpacing.card),
+          child: Row(
+            children: [
+              Icon(
+                Icons.diversity_3_rounded,
+                color: ProjectNexusColors.tealDark,
+                size: 30,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Direktori Bakat',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: ProjectNexusColors.tealDark,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Cari rekan tim sesuai keahlian lalu ajak bergabung.',
+                      style: TextStyle(
+                        color: ProjectNexusColors.tealDark,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: ProjectNexusColors.tealDark,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

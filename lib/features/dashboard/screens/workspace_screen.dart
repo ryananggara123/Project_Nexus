@@ -21,8 +21,16 @@ class WorkspaceScreen extends StatelessWidget {
     required this.onTaskStatusChanged,
     this.onEditTask,
     this.onDeleteTask,
+    this.onOpenDiscussion,
+    this.discussionPreview,
     super.key,
   });
+
+  /// Membuka ruang diskusi tim; `null` menyembunyikan kartunya.
+  final VoidCallback? onOpenDiscussion;
+
+  /// Potongan pesan terakhir di ruang diskusi.
+  final String? discussionPreview;
 
   final Widget header;
   final List<ProjectListing> availableProjects;
@@ -87,6 +95,10 @@ class WorkspaceScreen extends StatelessWidget {
               if (projectId != null) onProjectChanged(projectId);
             },
           ),
+        ],
+        if (onOpenDiscussion case final open?) ...[
+          const SizedBox(height: 16),
+          _DiscussionCard(preview: discussionPreview, onTap: open),
         ],
         const SizedBox(height: 24),
         SectionTitle('Anggota tim', trailing: '${members.length} orang'),
@@ -939,6 +951,76 @@ class _AddWorkspaceTaskDialogState extends State<_AddWorkspaceTaskDialog> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Kartu menuju ruang diskusi tim beserta pesan terakhirnya.
+class _DiscussionCard extends StatelessWidget {
+  const _DiscussionCard({required this.preview, required this.onTap});
+
+  final String? preview;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ProjectNexusColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: InkWell(
+        key: const Key('workspace_discussion'),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.card),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: ProjectNexusColors.border),
+            boxShadow: AppShadows.card,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: ProjectNexusColors.mint,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.forum_rounded,
+                  color: ProjectNexusColors.teal,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Diskusi tim',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      preview ?? 'Belum ada pesan. Sapa timmu!',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: ProjectNexusColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: ProjectNexusColors.muted,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
