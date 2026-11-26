@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
+import 'skill_picker.dart';
 
 class DraftProjectSheet extends StatefulWidget {
   const DraftProjectSheet({
@@ -22,20 +23,11 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _firstStepController = TextEditingController();
+  final _eventController = TextEditingController();
   final Set<String> _selectedSkills = {};
   late String? _selectedTeacher;
   ProjectDifficulty _selectedDifficulty = ProjectDifficulty.beginner;
   int _weeklyHours = 3;
-
-  static const _availableSkills = [
-    'Flutter',
-    'UI/UX',
-    'Riset',
-    'Penulis',
-    'IoT',
-    'Desain',
-    'Basis Data',
-  ];
 
   @override
   void initState() {
@@ -55,6 +47,7 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
     _titleController.dispose();
     _descriptionController.dispose();
     _firstStepController.dispose();
+    _eventController.dispose();
     super.dispose();
   }
 
@@ -163,13 +156,24 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                         controller: _titleController,
                         decoration: const InputDecoration(
                           labelText: 'Judul proyek atau lomba',
-                          hintText: 'Contoh: Sistem Kebun Hidroponik Pintar',
+                          hintText: 'Contoh: Tari Kreasi Nusantara',
                         ),
                         validator: (value) =>
                             value == null || value.trim().isEmpty
                             ? 'Judul proyek wajib diisi.'
                             : null,
                       ),
+                      if (projectToRevise == null) ...[
+                        const SizedBox(height: 13),
+                        TextFormField(
+                          key: const Key('draft_project_event'),
+                          controller: _eventController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nama lomba atau kegiatan (opsional)',
+                            hintText: 'Contoh: FLS2N Tingkat Kota',
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 13),
                       TextFormField(
                         key: const Key('draft_project_description'),
@@ -278,28 +282,18 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                                 height: 1.4,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 2,
-                              children: _availableSkills.map((skill) {
-                                final selected = _selectedSkills.contains(
-                                  skill,
-                                );
-                                return FilterChip(
-                                  key: Key('draft_skill_$skill'),
-                                  label: Text(skill),
-                                  selected: selected,
-                                  onSelected: (isSelected) {
-                                    if (isSelected) {
-                                      _selectedSkills.add(skill);
-                                    } else {
-                                      _selectedSkills.remove(skill);
-                                    }
-                                    field.didChange(Set.of(_selectedSkills));
-                                  },
-                                );
-                              }).toList(),
+                            const SizedBox(height: 10),
+                            SkillPicker(
+                              keyPrefix: 'draft_skill_',
+                              selected: _selectedSkills,
+                              onChanged: (skills) {
+                                setState(() {
+                                  _selectedSkills
+                                    ..clear()
+                                    ..addAll(skills);
+                                });
+                                field.didChange(Set.of(_selectedSkills));
+                              },
                             ),
                             if (field.errorText != null)
                               Padding(
@@ -371,7 +365,10 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                                         id: 'project-${DateTime.now().microsecondsSinceEpoch}',
                                         title: _titleController.text.trim(),
                                         leader: widget.studentName,
-                                        event: 'Proyek siswa',
+                                        event:
+                                            _eventController.text.trim().isEmpty
+                                            ? 'Proyek siswa'
+                                            : _eventController.text.trim(),
                                         description: _descriptionController.text
                                             .trim(),
                                         skills: _selectedSkills.toList(),

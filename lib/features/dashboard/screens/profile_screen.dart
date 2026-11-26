@@ -6,6 +6,7 @@ import '../models/profile_data.dart';
 import '../models/profile_photo_store.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/project_card.dart';
+import '../widgets/skill_picker.dart';
 
 /// Satu angka ringkasan di profil, misalnya jumlah proyek.
 typedef ProfileStat = ({String label, int value, IconData icon});
@@ -429,25 +430,14 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 0,
-                  children: availableStudentSkills.map((skill) {
-                    return FilterChip(
-                      key: Key('profile_skill_$skill'),
-                      label: Text(skill),
-                      selected: _selectedSkills.contains(skill),
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedSkills.add(skill);
-                          } else {
-                            _selectedSkills.remove(skill);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+                SkillPicker(
+                  keyPrefix: 'profile_skill_',
+                  selected: _selectedSkills,
+                  onChanged: (skills) => setState(() {
+                    _selectedSkills
+                      ..clear()
+                      ..addAll(skills);
+                  }),
                 ),
                 const SizedBox(height: 12),
                 Align(

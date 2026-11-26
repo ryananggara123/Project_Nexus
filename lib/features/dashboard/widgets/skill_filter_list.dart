@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
-import '../data/dashboard_sample_data.dart';
 
 class SkillFilterList extends StatelessWidget {
   const SkillFilterList({
@@ -9,9 +8,12 @@ class SkillFilterList extends StatelessWidget {
     required this.onSelected,
     required this.beginnerOnly,
     required this.onBeginnerOnlyChanged,
+    required this.skills,
     super.key,
   });
 
+  /// Pilihan filter, diawali "Semua", diambil dari keahlian proyek di feed.
+  final List<String> skills;
   final String selectedSkill;
   final ValueChanged<String> onSelected;
   final bool beginnerOnly;
@@ -23,7 +25,7 @@ class SkillFilterList extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (final skill in dashboardSkillFilters)
+          for (final skill in skills)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _chip(

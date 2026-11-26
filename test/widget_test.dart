@@ -634,6 +634,11 @@ void main() {
       find.text('Pilih minimal satu keahlian yang dibutuhkan.'),
       findsOneWidget,
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('draft_skill_group_Teknologi')),
+    );
+    await tester.tap(find.byKey(const Key('draft_skill_group_Teknologi')));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('draft_skill_Flutter')));
     await tester.tap(find.byKey(const Key('draft_skill_Flutter')));
     await tester.ensureVisible(find.byKey(const Key('draft_project_teacher')));
@@ -1205,6 +1210,11 @@ Future<void> _submitProject(
     find.byKey(const Key('draft_project_first_step')),
     'Bicarakan kebutuhan pengguna dengan satu teman.',
   );
+  await tester.ensureVisible(
+    find.byKey(const Key('draft_skill_group_Teknologi')),
+  );
+  await tester.tap(find.byKey(const Key('draft_skill_group_Teknologi')));
+  await tester.pumpAndSettle();
   await tester.ensureVisible(find.byKey(const Key('draft_skill_Flutter')));
   await tester.tap(find.byKey(const Key('draft_skill_Flutter')));
   await tester.ensureVisible(find.byKey(const Key('draft_project_teacher')));

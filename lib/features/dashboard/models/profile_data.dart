@@ -40,18 +40,7 @@ class ProfileData {
   }
 }
 
-const availableStudentSkills = [
-  'Flutter',
-  'UI/UX',
-  'Riset',
-  'Penulis',
-  'IoT',
-  'Desain',
-  'Basis Data',
-  'Prototyping',
-  'Kolaborasi',
-];
-
+/// Minat untuk rekomendasi, mencakup semua jenis lomba dan proyek.
 const availableStudentInterests = [
   'Teknologi',
   'Lingkungan',
@@ -59,6 +48,11 @@ const availableStudentInterests = [
   'Riset',
   'Pendidikan',
   'Sosial & Budaya',
+  'Seni & Pertunjukan',
+  'Olahraga',
+  'Sains & Olimpiade',
+  'Bahasa & Debat',
+  'Kewirausahaan',
 ];
 
 const availableWeeklyHours = [1, 2, 3, 5, 8, 10];

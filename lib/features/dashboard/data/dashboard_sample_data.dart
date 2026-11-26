@@ -5,8 +5,6 @@ import '../models/portfolio_item.dart';
 import '../models/project_application.dart';
 import '../models/workspace_task.dart';
 
-const dashboardSkillFilters = ['Semua', 'UI/UX', 'Flutter', 'Riset', 'Penulis'];
-
 const dashboardProjects = [
   ProjectListing(
     id: 'sample-garden',

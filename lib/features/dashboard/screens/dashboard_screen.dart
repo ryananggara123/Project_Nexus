@@ -839,6 +839,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }).toList();
   }
 
+  /// Filter keahlian dari proyek yang sedang membuka rekrutmen, terbanyak
+  /// lebih dulu, sehingga mengikuti jenis lomba apa pun yang ada.
+  List<String> get _feedSkillFilters {
+    final counts = <String, int>{};
+    for (final project in _projects) {
+      if (project.statusAcc != 'approved' || !project.recruitmentOpen) continue;
+      for (final skill in project.skills) {
+        counts[skill] = (counts[skill] ?? 0) + 1;
+      }
+    }
+    final skills = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+    return [
+      'Semua',
+      ...skills.take(10),
+      if (_selectedSkill != 'Semua' &&
+          !skills.take(10).contains(_selectedSkill))
+        _selectedSkill,
+    ];
+  }
+
   List<Widget> _buildProjectFeed() {
     final recommendations = _visibleProjects;
     return [
@@ -851,6 +872,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       const SizedBox(height: 14),
       SkillFilterList(
+        skills: _feedSkillFilters,
         selectedSkill: _selectedSkill,
         onSelected: (skill) => setState(() => _selectedSkill = skill),
         beginnerOnly: _beginnerOnly,

@@ -4,28 +4,67 @@ import '../../../core/theme/project_nexus_colors.dart';
 import '../models/dashboard_models.dart';
 import '../models/profile_photo_store.dart';
 
-/// Warna dan ikon kategori proyek, dari keahlian pertama yang dibutuhkan.
+/// Kategori bidang dengan kata kunci pengenalnya.
+const _categories = <(List<String>, Color, IconData)>[
+  (
+    ['tari', 'musik', 'vokal', 'teater', 'lukis', 'seni', 'kriya', 'paduan'],
+    Color(0xFFB0457A),
+    Icons.theater_comedy_outlined,
+  ),
+  (['foto', 'video', 'film'], Color(0xFF7A4FB0), Icons.photo_camera_outlined),
+  (
+    [
+      'futsal',
+      'sepak',
+      'basket',
+      'voli',
+      'bulu tangkis',
+      'atletik',
+      'silat',
+      'olahraga',
+      'e-sport',
+    ],
+    Color(0xFFD06A2C),
+    Icons.sports_soccer_rounded,
+  ),
+  (
+    ['debat', 'bahasa', 'esai', 'puisi', 'pidato', 'jurnalis', 'mc', 'penulis'],
+    Color(0xFF6657A5),
+    Icons.record_voice_over_outlined,
+  ),
+  (
+    ['matematika', 'fisika', 'kimia', 'biologi', 'olimpiade', 'sains', 'riset'],
+    Color(0xFF536B45),
+    Icons.science_outlined,
+  ),
+  (
+    ['bisnis', 'pemasaran', 'keuangan', 'kuliner', 'wirausaha'],
+    Color(0xFF9A7B1E),
+    Icons.storefront_outlined,
+  ),
+  (['iot', 'robotik', 'sensor'], Color(0xFF3E5C9A), Icons.sensors_rounded),
+  (
+    ['ui/ux', 'desain', 'prototyping'],
+    Color(0xFFC46A3A),
+    Icons.palette_outlined,
+  ),
+  (
+    ['flutter', 'pemrograman', 'basis data', 'aplikasi', 'web'],
+    Color(0xFF087E8B),
+    Icons.phone_android_rounded,
+  ),
+];
+
+/// Warna dan ikon kategori proyek dari keahlian yang dibutuhkan (diperiksa
+/// berurutan), lalu judulnya. ProjectNexus dipakai untuk lomba apa pun.
 ({Color color, IconData icon}) projectCategory(ProjectListing project) {
-  final skill = project.skills.isEmpty ? '' : project.skills.first;
-  return switch (skill) {
-    'Flutter' => (
-      color: const Color(0xFF087E8B),
-      icon: Icons.phone_android_rounded,
-    ),
-    'UI/UX' ||
-    'Desain' => (color: const Color(0xFFC46A3A), icon: Icons.palette_outlined),
-    'Riset' => (color: const Color(0xFF536B45), icon: Icons.science_outlined),
-    'IoT' => (color: const Color(0xFF3E5C9A), icon: Icons.sensors_rounded),
-    'Penulis' => (
-      color: const Color(0xFF6657A5),
-      icon: Icons.edit_note_rounded,
-    ),
-    'Basis Data' => (
-      color: const Color(0xFF2F6F8F),
-      icon: Icons.storage_rounded,
-    ),
-    _ => (color: ProjectNexusColors.teal, icon: Icons.rocket_launch_outlined),
-  };
+  for (final text in [...project.skills, project.title]) {
+    final lower = text.toLowerCase();
+    for (final (keywords, color, icon) in _categories) {
+      if (keywords.any(lower.contains)) return (color: color, icon: icon);
+    }
+  }
+  return (color: ProjectNexusColors.teal, icon: Icons.emoji_events_outlined);
 }
 
 class ProjectCard extends StatelessWidget {

@@ -92,6 +92,11 @@ Future<void> _submitProject(WidgetTester tester, String title) async {
     find.byKey(const Key('draft_project_first_step')),
     'Catat tanaman yang sering layu.',
   );
+  await tester.ensureVisible(
+    find.byKey(const Key('draft_skill_group_Teknologi')),
+  );
+  await tester.tap(find.byKey(const Key('draft_skill_group_Teknologi')));
+  await tester.pumpAndSettle();
   await tester.ensureVisible(find.byKey(const Key('draft_skill_Flutter')));
   await tester.tap(find.byKey(const Key('draft_skill_Flutter')));
   await tester.ensureVisible(find.byKey(const Key('draft_project_teacher')));
