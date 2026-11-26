@@ -18,6 +18,16 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
     }
 
+    // Ketua, anggota yang diterima, atau guru pendamping sebuah proyek.
+    function onTeam(projectId) {
+      let project = get(/databases/$(database)/documents/projects/$(projectId)).data;
+      let applicationId = projectId + '__' + me().fullName.lower().replace('[^a-z0-9]+', '-');
+      let application = /databases/$(database)/documents/applications/$(applicationId);
+      return project.leader == me().fullName
+        || project.teacherName == me().fullName
+        || (exists(application) && get(application).data.status == 'accepted');
+    }
+
     // Profil pengguna. Pendaftar hanya dapat membuat profil siswa untuk
     // dirinya sendiri; akun guru dibuat oleh administrator sekolah.
     match /users/{uid} {
@@ -138,6 +148,32 @@ service cloud.firestore {
         && me().role == 'teacher'
         && request.resource.data.id == competitionId;
       allow delete: if signedIn() && me().role == 'teacher';
+    }
+
+    // Direktori Bakat: profil publik siswa. Hanya pemiliknya (siswa) yang
+    // dapat membuat, mengubah, atau menghapus profilnya.
+    match /talent_profiles/{profileId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && me().role == 'student'
+        && request.resource.data.id == profileId
+        && request.resource.data.name == me().fullName;
+      allow delete: if signedIn() && resource.data.name == me().fullName;
+    }
+
+    // Diskusi tim: pesan dikirim atas nama sendiri oleh anggota tim atau guru
+    // pendamping, maksimal 1000 karakter, dan tidak dapat diubah.
+    match /team_messages/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.id == messageId
+        && request.resource.data.sender == me().fullName
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 1000
+        && onTeam(request.resource.data.projectId);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.sender == me().fullName;
     }
 
     // Notifikasi hanya dapat dibaca penerimanya. Pengirim harus diri sendiri,
