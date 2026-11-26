@@ -9,8 +9,11 @@ class RecommendationPreferences {
     required this.skills,
     required this.interests,
     required this.weeklyAvailableHours,
+    this.bio,
   });
 
+  /// Bio profil; `null` pada data lama yang belum menyimpannya.
+  final String? bio;
   final List<String> skills;
   final List<String> interests;
   final int weeklyAvailableHours;
@@ -57,12 +60,14 @@ class RecommendationPreferencesStore {
       skills: skills,
       interests: interests,
       weeklyAvailableHours: weeklyHours,
+      bio: decoded['bio'] is String ? decoded['bio'] as String : null,
     );
   }
 
   Future<void> save(String accountId, ProfileData profile) async {
     final preferences = await SharedPreferences.getInstance();
     final stored = jsonEncode({
+      'bio': profile.bio,
       'skills': profile.skills,
       'interests': profile.interests,
       'weeklyAvailableHours': profile.weeklyAvailableHours,

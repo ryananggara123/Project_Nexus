@@ -55,6 +55,9 @@ class LocalDatabase {
   static const studentAccountsKey = 'student_accounts';
   static const notificationsKey = 'notifications';
   static const competitionsKey = 'competitions';
+  static const talentProfilesKey = 'talent_profiles';
+  static const sentInvitesKey = 'sent_invites';
+  static const teamMessagesKey = 'team_messages';
 
   /// Setiap foto karya disimpan pada kuncinya sendiri agar daftar karya tetap ringan.
   static String portfolioImageKey(String imageId) => 'portfolio_image:$imageId';

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
@@ -96,4 +96,21 @@ class ProfilePhotoScope extends InheritedNotifier<ProfilePhotoStore> {
 
   static ProfilePhotoStore? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<ProfilePhotoScope>()?.notifier;
+}
+
+/// Halaman baru yang tetap dapat menampilkan foto profil. Rute baru berada di
+/// luar [ProfilePhotoScope] milik dashboard, jadi penyimpanannya diteruskan.
+MaterialPageRoute<T> pageRouteWithPhotos<T>(
+  BuildContext context,
+  WidgetBuilder builder,
+) {
+  final photos = ProfilePhotoScope.maybeOf(context);
+  return MaterialPageRoute<T>(
+    builder: (context) => photos == null
+        ? builder(context)
+        : ProfilePhotoScope(
+            store: photos,
+            child: Builder(builder: builder),
+          ),
+  );
 }

@@ -10,7 +10,8 @@ enum NotificationType {
   applicationAccepted(Icons.celebration_rounded, ProjectNexusColors.success),
   applicationRejected(Icons.person_off_outlined, ProjectNexusColors.muted),
   taskAssigned(Icons.assignment_ind_rounded, ProjectNexusColors.teal),
-  resultRecorded(Icons.emoji_events_rounded, ProjectNexusColors.gold);
+  resultRecorded(Icons.emoji_events_rounded, ProjectNexusColors.gold),
+  teamInvite(Icons.group_add_rounded, ProjectNexusColors.teal);
 
   const NotificationType(this.icon, this.color);
 
