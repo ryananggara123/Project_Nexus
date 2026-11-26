@@ -131,6 +131,15 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.owner == me().fullName;
     }
 
+    // Papan Info Lomba: dibaca semua pengguna, dipasang dan diubah guru.
+    match /competitions/{competitionId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && me().role == 'teacher'
+        && request.resource.data.id == competitionId;
+      allow delete: if signedIn() && me().role == 'teacher';
+    }
+
     // Notifikasi hanya dapat dibaca penerimanya. Pengirim harus diri sendiri,
     // dan penerima hanya dapat menandai notifikasi sebagai sudah dibaca.
     match /notifications/{notificationId} {
