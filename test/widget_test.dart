@@ -480,7 +480,7 @@ void main() {
     );
     expect(find.text('Preferensi rekomendasi'), findsOneWidget);
 
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1000));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 3000));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('profile_edit')));
     await tester.pumpAndSettle();
