@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/project_nexus_colors.dart';
+import '../../competitions/models/competition.dart';
 import '../models/dashboard_models.dart';
 import 'skill_picker.dart';
 
@@ -8,8 +9,13 @@ class DraftProjectSheet extends StatefulWidget {
   const DraftProjectSheet({
     required this.studentName,
     this.projectToRevise,
+    this.competition,
     super.key,
   });
+
+  /// Lomba dari Papan Info Lomba; nama lomba terisi otomatis dan proyek
+  /// ditautkan ke lomba tersebut.
+  final Competition? competition;
 
   final String studentName;
   final ProjectListing? projectToRevise;
@@ -36,6 +42,7 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
     _titleController.text = project?.title ?? '';
     _descriptionController.text = project?.description ?? '';
     _firstStepController.text = project?.firstStep ?? '';
+    _eventController.text = widget.competition?.title ?? '';
     _selectedTeacher = project?.teacherName;
     _selectedDifficulty = project?.difficulty ?? ProjectDifficulty.beginner;
     _weeklyHours = project?.weeklyHours ?? 3;
@@ -379,6 +386,7 @@ class _DraftProjectSheetState extends State<DraftProjectSheet> {
                                         weeklyHours: _weeklyHours,
                                         firstStep: _firstStepController.text
                                             .trim(),
+                                        competitionId: widget.competition?.id,
                                       )
                                     : previous.copyWith(
                                         title: _titleController.text.trim(),

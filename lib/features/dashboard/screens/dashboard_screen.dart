@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/project_nexus_colors.dart';
 import '../../auth/models/user_role.dart';
 import '../../auth/widgets/auth_widgets.dart';
+import '../../competitions/models/competition.dart';
+import '../../competitions/models/competition_store.dart';
+import '../../competitions/screens/competitions_screen.dart';
 import '../../notifications/data/system_notifier.dart';
 import '../../notifications/models/app_notification.dart';
 import '../../notifications/models/notification_store.dart';
@@ -38,6 +41,7 @@ class DashboardScreen extends StatefulWidget {
     required this.projectStore,
     this.teamStore,
     this.notificationStore,
+    this.competitionStore,
     this.studentName,
     this.teacherName,
     this.email,
@@ -54,6 +58,9 @@ class DashboardScreen extends StatefulWidget {
 
   /// Pusat notifikasi. Bila kosong, layar membuat penyimpanan sendiri di memori.
   final NotificationStore? notificationStore;
+
+  /// Papan Info Lomba. Bila kosong, layar membuat penyimpanan sendiri.
+  final CompetitionStore? competitionStore;
   final String? studentName;
   final String? teacherName;
 
@@ -82,6 +89,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.notificationStore ??
       (_ownedNotificationStore = NotificationStore());
   StreamSubscription<AppNotification>? _incomingNotifications;
+  CompetitionStore? _ownedCompetitionStore;
+  late final CompetitionStore _competitions =
+      widget.competitionStore ?? (_ownedCompetitionStore = CompetitionStore());
   late ProfileData _profile = _isTeacherView
       ? ProfileData(
           name: _currentTeacherName,
@@ -154,6 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _ownedTeamStore?.dispose();
     unawaited(_incomingNotifications?.cancel());
     _ownedNotificationStore?.dispose();
+    _ownedCompetitionStore?.dispose();
     super.dispose();
   }
 
@@ -245,8 +256,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_navigationIndex == 0) {
       return _isTeacherView ? _buildTeacherQueue() : _buildDashboard();
     }
-    if (_navigationIndex == 1) return _buildWorkspace();
-    if (_navigationIndex == 2) return _buildPortfolio();
+    if (_navigationIndex == 1) return _buildCompetitions();
+    if (_navigationIndex == 2) return _buildWorkspace();
+    if (_navigationIndex == 3) return _buildPortfolio();
     return _buildProfile();
   }
 
@@ -301,6 +313,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icon(Icons.home_outlined),
                   selectedIcon: Icon(Icons.home_rounded),
                   label: Text('Beranda'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.emoji_events_outlined),
+                  selectedIcon: Icon(Icons.emoji_events_rounded),
+                  label: Text('Lomba'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.view_kanban_outlined),
@@ -375,6 +392,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       label: 'Beranda',
     ),
     NavigationDestination(
+      icon: Icon(Icons.emoji_events_outlined),
+      selectedIcon: Icon(Icons.emoji_events_rounded),
+      label: 'Lomba',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.view_kanban_outlined),
       selectedIcon: Icon(Icons.view_kanban_rounded),
       label: 'Workspace',
@@ -390,6 +412,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       label: 'Profil',
     ),
   ];
+
+  Widget _buildCompetitions() {
+    return CompetitionsScreen(
+      header: _appHeader,
+      store: _competitions,
+      projects: _projects,
+      membersOf: widget.projectStore.acceptedMembers,
+      userName: _notificationRecipient,
+      isTeacher: _isTeacherView,
+      onCreateTeam: _openDraftForm,
+    );
+  }
 
   Widget _buildWorkspace() {
     final project = _workspaceProject;
@@ -560,6 +594,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .length;
     final myDone = doneTasks.where((t) => isMe(t.$2.assignee)).length;
     final works = _teamStore.portfolioItems.where((i) => isMe(i.owner)).length;
+    final results = [
+      for (final project in _projects)
+        if (project.result != null &&
+            widget.projectStore.isMember(project.id, _profile.name))
+          project.result!,
+    ];
     return ProfileScreen(
       header: _appHeader,
       profile: _profile,
@@ -593,6 +633,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           hint: 'Memajang karya di portofolio',
           icon: Icons.palette_outlined,
           earned: works > 0,
+        ),
+        (
+          title: 'Petarung Lomba',
+          hint: 'Mengikuti lomba sampai hasil dicatat',
+          icon: Icons.military_tech_rounded,
+          earned: results.isNotEmpty,
+        ),
+        (
+          title: 'Juara',
+          hint: 'Meraih Juara 1, 2, atau 3 bersama tim',
+          icon: Icons.emoji_events_rounded,
+          earned: results.any((result) => result.isWinner),
         ),
       ],
     );
@@ -787,6 +839,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onManageApplicants: project.statusAcc == 'approved'
               ? () => _showApplicantManagement(project)
               : null,
+          onRecordResult: project.statusAcc == 'approved'
+              ? () => _recordResult(project)
+              : null,
         ),
       ),
     ];
@@ -832,7 +887,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onOpenWorkspace: application.status == ProjectApplicationStatus.accepted
             ? () => setState(() {
                 _selectedWorkspaceProjectId = application.projectId;
-                _navigationIndex = 1;
+                _navigationIndex = 2;
               })
             : null,
       );
@@ -1072,12 +1127,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Future<void> _openDraftForm() async {
+  Future<void> _openDraftForm([Competition? competition]) async {
     final submittedProject = await showModalBottomSheet<ProjectListing>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraftProjectSheet(studentName: _profile.name),
+      builder: (context) => DraftProjectSheet(
+        studentName: _profile.name,
+        competition: competition,
+      ),
     );
     if (submittedProject != null && mounted) {
       final result = widget.projectStore.submit(
@@ -1128,6 +1186,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _showMessage(
       const SnackBar(
         content: Text('Revisi terkirim dan menunggu tinjauan guru.'),
+      ),
+    );
+  }
+
+  /// Ketua mencatat hasil lomba; hasilnya tampil di Hall of Fame.
+  Future<void> _recordResult(ProjectListing project) async {
+    final recorded = await showDialog<(CompetitionResult, String)>(
+      context: context,
+      builder: (context) => _RecordResultDialog(project: project),
+    );
+    if (recorded == null || !mounted) return;
+    final status = widget.projectStore.recordResult(
+      projectId: project.id,
+      leaderName: _profile.name,
+      role: widget.role,
+      result: recorded.$1,
+      note: recorded.$2,
+    );
+    _showMessage(
+      SnackBar(
+        content: Text(
+          status == WorkflowActionResult.success
+              ? 'Hasil lomba dicatat. Lihat di menu Lomba › Hall of Fame.'
+              : 'Hasil lomba tidak dapat dicatat.',
+        ),
       ),
     );
   }
@@ -1238,11 +1321,13 @@ class _StudentSubmissionCard extends StatelessWidget {
     this.project, {
     this.onRevise,
     this.onManageApplicants,
+    this.onRecordResult,
   });
 
   final ProjectListing project;
   final VoidCallback? onRevise;
   final VoidCallback? onManageApplicants;
+  final VoidCallback? onRecordResult;
 
   @override
   Widget build(BuildContext context) {
@@ -1259,7 +1344,18 @@ class _StudentSubmissionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            StatusPill(label: label, color: color),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                StatusPill(label: label, color: color),
+                if (project.result case final result?)
+                  StatusPill(
+                    label: '🏆 ${result.label}',
+                    color: ProjectNexusColors.gold,
+                  ),
+              ],
+            ),
             const SizedBox(height: 12),
             Text(
               project.title,
@@ -1329,6 +1425,22 @@ class _StudentSubmissionCard extends StatelessWidget {
                   onPressed: onManageApplicants,
                   child: Text(
                     'Kelola pelamar (${project.recruitmentOpen ? 'rekrutmen terbuka' : 'rekrutmen ditutup'})',
+                  ),
+                ),
+              ),
+            ],
+            if (onRecordResult != null) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  key: Key('record_result_${project.id}'),
+                  onPressed: onRecordResult,
+                  icon: const Icon(Icons.emoji_events_outlined),
+                  label: Text(
+                    project.result == null
+                        ? 'Catat hasil lomba'
+                        : 'Ubah hasil lomba',
                   ),
                 ),
               ),
@@ -1600,6 +1712,90 @@ class _DetailLine extends StatelessWidget {
           Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog ketua untuk memilih hasil lomba dan menulis catatan singkat.
+class _RecordResultDialog extends StatefulWidget {
+  const _RecordResultDialog({required this.project});
+
+  final ProjectListing project;
+
+  @override
+  State<_RecordResultDialog> createState() => _RecordResultDialogState();
+}
+
+class _RecordResultDialogState extends State<_RecordResultDialog> {
+  late CompetitionResult? _result = widget.project.result;
+  late final _note = TextEditingController(text: widget.project.resultNote);
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Catat hasil lomba'),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.project.title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Setiap hasil layak dirayakan. Seluruh anggota tim akan mendapat '
+            'sertifikat di menu Lomba › Hall of Fame.',
+            style: TextStyle(color: ProjectNexusColors.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final result in CompetitionResult.values)
+                ChoiceChip(
+                  key: Key('result_${result.name}'),
+                  label: Text(result.label),
+                  selected: _result == result,
+                  onSelected: (_) => setState(() => _result = result),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            key: const Key('result_note'),
+            controller: _note,
+            minLines: 2,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Catatan (opsional)',
+              hintText: 'Contoh: Penampilan terbaik kategori kostum.',
+              alignLabelWithHint: true,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          key: const Key('result_save'),
+          onPressed: _result == null
+              ? null
+              : () => Navigator.pop(context, (_result!, _note.text)),
+          child: const Text('Simpan hasil'),
+        ),
+      ],
     );
   }
 }

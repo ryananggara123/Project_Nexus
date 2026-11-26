@@ -49,7 +49,7 @@ const _categories = <(List<String>, Color, IconData)>[
     Icons.palette_outlined,
   ),
   (
-    ['flutter', 'pemrograman', 'basis data', 'aplikasi', 'web'],
+    ['flutter', 'pemrograman', 'basis data', 'aplikasi', 'web', 'teknologi'],
     Color(0xFF087E8B),
     Icons.phone_android_rounded,
   ),
@@ -57,8 +57,12 @@ const _categories = <(List<String>, Color, IconData)>[
 
 /// Warna dan ikon kategori proyek dari keahlian yang dibutuhkan (diperiksa
 /// berurutan), lalu judulnya. ProjectNexus dipakai untuk lomba apa pun.
-({Color color, IconData icon}) projectCategory(ProjectListing project) {
-  for (final text in [...project.skills, project.title]) {
+({Color color, IconData icon}) projectCategory(ProjectListing project) =>
+    categoryFor([...project.skills, project.title]);
+
+/// Warna dan ikon bidang dari teks pertama yang cocok dengan kata kunci.
+({Color color, IconData icon}) categoryFor(List<String> texts) {
+  for (final text in texts) {
     final lower = text.toLowerCase();
     for (final (keywords, color, icon) in _categories) {
       if (keywords.any(lower.contains)) return (color: color, icon: icon);

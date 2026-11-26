@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/cloud/cloud_store.dart';
 import '../../../core/storage/local_database.dart';
+import '../../competitions/models/competition_store.dart';
 import '../../dashboard/models/profile_photo_store.dart';
 import '../../dashboard/models/project_workflow_store.dart';
 import '../../dashboard/models/team_work_store.dart';
@@ -49,6 +50,9 @@ class _AuthGateState extends State<AuthGate> {
   late final ProfilePhotoStore _photoStore = ProfilePhotoStore(
     database: widget.database,
   );
+  late final CompetitionStore _competitionStore = CompetitionStore(
+    database: widget.database,
+  );
   late final TeamWorkStore _teamStore = TeamWorkStore(
     database: widget.database,
   );
@@ -68,6 +72,7 @@ class _AuthGateState extends State<AuthGate> {
     _projectStore.dispose();
     _teamStore.dispose();
     _photoStore.dispose();
+    _competitionStore.dispose();
     _notificationStore.dispose();
     super.dispose();
   }
@@ -87,6 +92,7 @@ class _AuthGateState extends State<AuthGate> {
       _projectStore.startSync(cloud);
       _teamStore.startSync(cloud);
       _photoStore.startSync(cloud);
+      _competitionStore.startSync(cloud);
       _notificationStore.startSync(cloud, account.name);
     }
     setState(() => _account = account);
@@ -96,6 +102,7 @@ class _AuthGateState extends State<AuthGate> {
     _projectStore.stopSync();
     _teamStore.stopSync();
     _photoStore.stopSync();
+    _competitionStore.stopSync();
     _notificationStore.stopSync();
     await _accounts.signOut();
     if (!mounted) return;
@@ -123,6 +130,7 @@ class _AuthGateState extends State<AuthGate> {
         projectStore: _projectStore,
         teamStore: _teamStore,
         notificationStore: _notificationStore,
+        competitionStore: _competitionStore,
         onLogout: _leave,
       ),
     );
