@@ -10,6 +10,23 @@ enum ProjectDifficulty {
   final String label;
 }
 
+/// Hasil lomba yang dicatat ketua tim setelah lomba selesai.
+enum CompetitionResult {
+  champion1('Juara 1'),
+  champion2('Juara 2'),
+  champion3('Juara 3'),
+  honorable('Juara Harapan'),
+  finalist('Finalis'),
+  participant('Peserta');
+
+  const CompetitionResult(this.label);
+
+  final String label;
+
+  bool get isWinner =>
+      this == champion1 || this == champion2 || this == champion3;
+}
+
 class ProjectListing {
   const ProjectListing({
     required this.id,
@@ -25,6 +42,10 @@ class ProjectListing {
     this.weeklyHours = 3,
     this.firstStep = '',
     this.reviewNote,
+    this.competitionId,
+    this.result,
+    this.resultNote,
+    this.resultAt,
   });
 
   final String id;
@@ -41,6 +62,13 @@ class ProjectListing {
   final String firstStep;
   final String? reviewNote;
 
+  /// Lomba di Papan Info Lomba yang diikuti tim ini, bila ada.
+  final String? competitionId;
+
+  final CompetitionResult? result;
+  final String? resultNote;
+  final DateTime? resultAt;
+
   ProjectListing copyWith({
     String? title,
     String? description,
@@ -51,6 +79,9 @@ class ProjectListing {
     String? firstStep,
     String? reviewNote,
     bool clearReviewNote = false,
+    CompetitionResult? result,
+    String? resultNote,
+    DateTime? resultAt,
   }) {
     return ProjectListing(
       id: id,
@@ -66,6 +97,10 @@ class ProjectListing {
       weeklyHours: weeklyHours ?? this.weeklyHours,
       firstStep: firstStep ?? this.firstStep,
       reviewNote: clearReviewNote ? null : reviewNote ?? this.reviewNote,
+      competitionId: competitionId,
+      result: result ?? this.result,
+      resultNote: resultNote ?? this.resultNote,
+      resultAt: resultAt ?? this.resultAt,
     );
   }
 
@@ -83,6 +118,10 @@ class ProjectListing {
     'weeklyHours': weeklyHours,
     'firstStep': firstStep,
     'reviewNote': reviewNote,
+    'competitionId': competitionId,
+    'result': result?.name,
+    'resultNote': resultNote,
+    'resultAt': resultAt?.millisecondsSinceEpoch,
   };
 
   /// Membaca proyek dari database; `null` bila datanya tidak lengkap atau rusak.
@@ -104,6 +143,16 @@ class ProjectListing {
         weeklyHours: json['weeklyHours'] as int,
         firstStep: json['firstStep'] as String,
         reviewNote: json['reviewNote'] as String?,
+        competitionId: json['competitionId'] as String?,
+        result: switch (json['result']) {
+          final String name => CompetitionResult.values.byName(name),
+          _ => null,
+        },
+        resultNote: json['resultNote'] as String?,
+        resultAt: switch (json['resultAt']) {
+          final int millis => DateTime.fromMillisecondsSinceEpoch(millis),
+          _ => null,
+        },
       );
     } on TypeError {
       return null;
